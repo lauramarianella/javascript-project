@@ -22,8 +22,9 @@ const monsterNames = [
 ];
 
 const RARITY_LIST = ['Common', 'Unusual', 'Rare', 'Epic'];
+const items = []; // Array of item objects. These will be used to clone new items with the appropriate properties.
 const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
-let gameStep = 0;
+let gameStep = 0; // The current game step, value is index of the GAME_STEPS array.
 let board = []; // The board holds all the game entities. It is a 2D array.
 
 const grassChar = '.';
@@ -138,14 +139,17 @@ function assertEquality(original, cloned) {
 }
 
 // Uses a player item (note: this consumes the item, need to remove it after use)
-// itemName is a string. target is an entity (typically player)
+// itemName is a string, target is an entity (i.e. monster, tradesman, player, dungeon)
+// If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
+// First item of matching type is used
 function useItem(itemName, target) {}
 
 // Uses a player skill (note: skill is not consumable, it's useable infinitely besides the cooldown wait time)
 // skillName is a string. target is an entity (typically monster).
+// If target is not specified, skill shoud be used on the entity at the same position
 function useSkill(skillName, target) {}
 
-// Updates the value of 'board' by creating the rows and columns
+// Sets the board variable to a 2D array of rows and columns
 // First and last rows are walls
 // First and last columns are walls
 // All the other entities are grass entities
@@ -207,7 +211,13 @@ function updateBoard(entity) {
 
 
 
+// Sets the player variable to a player object based on the specifications of the README file
+// The items property will need to be a new array of cloned item objects
+// Prints a message showing player name and level (which will be 1 by default)
+function createPlayer(name, level = 1, items = []) {}
+
 // Creates a monster object with a random name with the specified level, items and position
+// The items property will need to be a new array of cloned item objects
 // The entity properties (e.g. hp, attack, speed) must respect the rules defined in the README
 function createMonster(level, items, position) {
   let monster = {
@@ -245,12 +255,14 @@ function createTradesman(items, position) {
   return tradesman;
 }
 
-// Creates an item entity by cloning one of the item objects and adding a the position and type properties.
-function createItem(itemIdx, position) {}
+// Creates an item entity by cloning one of the item objects and adding the position and type properties.
+// item is a reference to one of the items in the items variable. It needs to be cloned before being assigned the position and type properties.
+function createItem(item, position) {}
 
 
 // Creates a dungeon entity at the specified position
-function createDungeon(position) {
+// The other parameters are optional. You can have unlocked dungeons with no princess for loot, or just empty ones that use up a key for nothing.
+function createDungeon(position, isLocked = true, hasPrincess = true, items = [], gold = 0) {
   let dungeon = {
     position    : position,      // (object - specified in parameters)
     type        : 'dungeon',     // (string - 'tradesman')
@@ -259,13 +271,17 @@ function createDungeon(position) {
   return dungeon;
 }
 
+
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
 function move(direction) {}
 
 function setupPlayer() {
   printSectionTitle('SETUP PLAYER');
-  print("Please enter your name using the setName function. Usage: setName('Bob')");
+  print("Please create a player using the createPlayer function. Usage: createPlayer('Bob')");
+  print(
+    "You can optionally pass in a level and items, e.g. createPlayer('Bob', 3, [items[0], items[2]]). items[0] refers to the first item in the items variable"
+  );
   print("Once you're done, go to the next step with next()");
 }
 
@@ -273,7 +289,7 @@ function setupBoard() {
   printSectionTitle('SETUP BOARD');
   print('Please create a board using initBoard(rows, columns)');
   print(
-    'Setup monsters, items and more using createMonster(attr), createItem(itemIdx, pos), createTradesman(items, pos), createDungeon(pos), updateBoard(entity)'
+    'Setup monsters, items and more using createMonster(attr), createItem(item, pos), createTradesman(items, pos), createDungeon(pos), updateBoard(entity)'
   );
   print("Once you're done, go to the next step with next()");
 }
