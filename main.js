@@ -30,13 +30,34 @@ let board = []; // The board holds all the game entities. It is a 2D array.
 const grassChar = '.';
 const wallChar = '#';
 
-const items = []; // Array of item objects. These will be used to clone new items with the appropriate properties.
+let skill = {
+  name: '',// (string)
+  requiredLevel: 0,// (number - the skill should not be useable if player level is lower)
+  cooldown:0,// (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
+  use: function use(){},// (function - takes a target / entity as a parameter and uses the skill on it)
+}
+let confuse = {
+  use: function use(){},//- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
+};
+let steal   = {
+  use: function use(){},//- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
+};
+confuse.__x__ = skill;
+steal.__x__   = skill;
 
-const player = {
+confuse.name     = 'confuse';
+confuse.required = 1;         // level is 1
+confuse.cooldown = 1000;      //is 10000
+
+steal.name      = 'steal';
+steal.required  = 3;          // level is 3
+steal.cooldown  = 25000;      //is 25000
+
+let player = {// The player object
   name:      '',
-  level:     0,               // (number - 1)
+  level:     1,               // (number - 1)
   items:     [],              // (array of objects - [])
-  skills:    [],              // (array of objects - [])
+  skills:    [confuse, steal],// (array of objects - [])
   attack:    0,               // (number - 10)
   speed:     0,               // (number - 2000)
   hp:        0,               // (number - 100)
@@ -48,8 +69,6 @@ const player = {
   
   //When leveling up, exp must be decreased by the amount used to level up, e.g. exp required to level up = 100. current exp = 120  
   //-> levelUp is called, incrementing by 1 the level and updating exp to exp = 120 - 100 = 20
-  
-  setName: setName
 }; // The player object
 
 const grass = {
@@ -72,7 +91,7 @@ function print(arg, color) {
 
 // Prints a blue string with the indicated number of dashes on each side of the string. Usage: printSectionTitle('hi', 1) // -hi-
 // We set a default value for the count to be 20 (i.e. 20 dashes '-')
-function printSectionTitle(title, count, char, color){ //function printSectionTitle(title, count = 20) {
+function printSectionTitle(title, count, char, color){ //(title, count = 20) {
   const defaultCount = 20;
   const defaultChar = '-';
   const defaultColor = 'blue';
@@ -87,34 +106,6 @@ function printSectionTitle(title, count, char, color){ //function printSectionTi
   print(arg, color);
 }
 
-// Sets the name property for the player and prints a message to notice the user of the change
-function setName(name) {
-  this.name = name;
-  console.log('*** name set to: ' + this.name);
-}
-
-function setPosition(x,y) {
-  this.position.row = x;
-  this.position.column = y;
-  console.log(this.name + ' position set to: x:' + x + " y:" + y);
-}
-
-// 
-function getMonsterRandomName() {
-  var num = Math.floor(Math.random() * monsterNames.length + 1);
-  return monsterNames[num];
-}
-
-// 
-// function getMonsterRandomXY() {
-//   var x = Math.floor(Math.random() * board.length + 1);
-//   var y = Math.floor(Math.random() * board[0].length + 1);
-//   let xyObj = {};
-//   xyObj.x = x;
-//   xyObj.y = y;
-//   return xyObj;
-// }
-
 // Returns a new object with the same keys and values as the input object
 function clone(entity) {
   let keys = Object.keys(entity);
@@ -125,7 +116,6 @@ function clone(entity) {
   return cloned;
 }
 
-
 function printObj(obj) {
   let keys = Object.keys(obj);
   
@@ -133,10 +123,14 @@ function printObj(obj) {
 }
 
 // returns true or false to indicate whether 2 different objects have the same keys and values
-function assertEquality(original, cloned) {
+function assertEqual(original, cloned) {
   let keys = Object.keys(original);
   return keys.every(key => original[key]===cloned[key]);/*for(let i=0; i<keys.length;i++){if(original[keys[i]] !== clone[keys[i]]) return false;}return true;*/
 }
+
+// Clones an array of objects
+// returns a new array of cloned objects. Useful to clone an array of item objects
+function cloneArray(objs) {}
 
 // Uses a player item (note: this consumes the item, need to remove it after use)
 // itemName is a string, target is an entity (i.e. monster, tradesman, player, dungeon)
@@ -166,28 +160,42 @@ function createBoard(rows, columns) {
       }
     }
   }
-  print('Creating board: rows: ' + rows + ' cols: ' + columns);
+  //print('Creating board: rows: ' + rows + ' cols: ' + columns);
 }
 
 // Updates the board by setting the entity at the entity position
 // An entity has a position property, each board cell is an object with an entity property holding a reference to the entity at that position
 // When a player is on a board cell, the board cell keeps the current entity property (e.g. monster entity at that position) and may need to have an additional property to know the player is there too.
-function updateBoard(entity) {}
+function updateBoard(entity) {
+  board[entity.position.row][entity.position.column] = entity.type.slice(0,1);
+  
+  printBoard();
+}
 
 // Sets the position property of the player object to be in the middle of the board
 // You may need to use Math methods such as Math.floor()
-function placePlayer(x,y) {
+function placePlayer() {
+  const x = Math.floor(board.length/2);
+  const y = Math.floor(board[0].length/2);
   board[x][y] = 'P';
-  print('Placing player in position x: ' + x + " y:" + y);
+  //print('Placing player in position x: ' + x + " y:" + y);
 
-  printBoard();
+  //printBoard();
 }
+
+// function setPosition(x,y) {
+//   this.position.row = x;
+//   this.position.column = y;
+//   console.log(this.name + ' position set to: x:' + x + " y:" + y);
+// }
 
 // Creates the board and places player
 function initBoard(rows, columns) {
   createBoard(rows,columns);
 
-  placePlayer(Math.floor(rows/2), Math.floor(columns/2));//place player in the middle
+  placePlayer();//place player in the middle
+
+  print('Creating board and placing player...');
 }
 
 // Prints the board
@@ -203,18 +211,20 @@ function printBoard() {
   print(xyBoard,'blue');
 }
 
-function updateBoard(entity) {
-  board[entity.position.row][entity.position.column] = entity.type.slice(0,1);
-  
-  printBoard();
-}
-
-
 
 // Sets the player variable to a player object based on the specifications of the README file
 // The items property will need to be a new array of cloned item objects
 // Prints a message showing player name and level (which will be 1 by default)
-function createPlayer(name, level = 1, items = []) {}
+function createPlayer(name, level, items) {//name, level = 1, items = []) {
+  if(typeof name  === 'string') player.name = name;
+  if(typeof level === 'number') player.level = level;
+  if(typeof items === 'object'){
+    if(items.legth >= 0) player.items = items;
+  } 
+
+  print('Create player with name ' + player.name + ' and level ' + player.level);
+  return player;
+}
 
 // Creates a monster object with a random name with the specified level, items and position
 // The items property will need to be a new array of cloned item objects
@@ -239,8 +249,11 @@ function createMonster(level, items, position) {
   return monster;
 }
 
-
-
+// 
+function getMonsterRandomName() {
+  var num = Math.floor(Math.random() * monsterNames.length + 1);
+  return monsterNames[num];
+}
 
 // Creates a tradesman object with the specified items and position. hp is Infinity
 function createTradesman(items, position) {
@@ -255,10 +268,101 @@ function createTradesman(items, position) {
   return tradesman;
 }
 
+let item ={
+  name: '',
+  type: '',
+  value: 0,  
+  rarity: 0,
+  use: function use(){},
+  position:{row:0, column:0},
+}
+
+function fillInItemsArray(){
+  let potion = { 
+    use: function use(){},//restores 25hp to the specified target
+  }
+  let bomb= {
+    use: function use(){},//deals 50hp damage to the specified target
+  }
+  let key={
+    use: function use(){},//Unlocks the door to a dungeon
+  }
+  
+  potion.__proto__      =   item;
+  potion.name           =   'Common potion';//'Common potion' (if rarity 0)
+  potion.type           =   'potion';
+  potion.value          =   5;
+  potion.rarity         =   0;//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp)  
+  
+  let unusualPotion     =   createItem(potion,{row:0, columns:0});
+  unusualPotion.name    =   "Unusual potion";
+  unusualPotion.value   =   10;
+  unusualPotion.rarity  =   1;
+
+  let rarePotion        =   createItem(potion,{row:0, columns:0});
+  rarePotion.name       =   "Rare potion";
+  rarePotion.value      =   20;
+  rarePotion.rarity     =   2;
+
+  let epicPotion = { 
+    rarity: 3,
+    value:  50,
+    name: "Epic potion",
+    use: function use(){},//Potion with rarity 3 restores 100% hp (sets hp back to max hp)
+  }
+  epicPotion.__x__      =  potion;
+
+  bomb.__proto__        = item;
+  bomb.name             = 'Common bomb';// (if rarity 0)
+  bomb.type             = 'bomb';
+  bomb.value            = 7;
+  bomb.rarity           = 0;//Bonus: Bomb with rarity 3 deals 90% damage of hp
+
+  let unusualBomb       =   createItem(bomb,{row:0, columns:0});
+  unusualBomb.name      =   "Unusual bomb";
+  unusualBomb.value     =   12;
+  unusualBomb.rarity    =   1;
+
+  let rareBomb          =   createItem(bomb,{row:0, columns:0});
+  rareBomb.name         =   "Rare bomb";
+  rareBomb.value        =   25;
+  rareBomb.rarity       =   2;
+
+  let epicBomb = { 
+    rarity: 3,
+    value:  100,
+    use: function use(){},//Bomb with rarity 3 deals 90% damage of hp
+  }
+  epicBomb.__x__        =  bomb;
+  
+  key.__proto__         =   item;
+  key.name              =   'Epic key';
+  key.type              =   'key';
+  key.value             =   150;
+  key.rarity            =   3;
+
+  items.push(potion);
+  items.push(unusualPotion);
+  items.push(rarePotion);
+  items.push(epicPotion);
+
+  items.push(bomb);
+  items.push(unusualBomb);
+  items.push(rareBomb);
+  items.push(epicBomb);
+
+  items.push(key);
+}
+
+
+
 // Creates an item entity by cloning one of the item objects and adding the position and type properties.
 // item is a reference to one of the items in the items variable. It needs to be cloned before being assigned the position and type properties.
-function createItem(item, position) {}
-
+function createItem(item, position) {
+  let newItem = clone(item);
+  newItem.position = position;
+  return newItem;
+}
 
 // Creates a dungeon entity at the specified position
 // The other parameters are optional. You can have unlocked dungeons with no princess for loot, or just empty ones that use up a key for nothing.
@@ -270,7 +374,6 @@ function createDungeon(position, isLocked = true, hasPrincess = true, items = []
   print("Creating dungeon: " + dungeon.name, 'red');
   return dungeon;
 }
-
 
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
@@ -311,8 +414,6 @@ function next() {
 }
 
 function runORI() {
-  //const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
-  //let gameStep = 0;
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -330,22 +431,22 @@ function runORI() {
 print('Welcome to the game!', 'gold');
 print('Follow the instructions to setup your game and start playing');
 
+fillInItemsArray();
+
 run();
 
 
 function run() {
-  //const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
-  //let gameStep = 0;
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
-      setName('Hopper');
+      createPlayer('HopperCat');//setName('HopperCat');
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
-      //let position = getMonsterRandomXY();
+      printBoard();
       updateBoard(createMonster(1,[],{row:1, column:5}));
       updateBoard(createMonster(1,[],{row:1, column:6}));
       updateBoard(createMonster(3,[],{row:1, column:2}));
