@@ -54,19 +54,21 @@ steal.required  = 3;          // level is 3
 steal.cooldown  = 25000;      //is 25000
 
 let player = {// The player object
-  name:      '',
-  level:     1,               // (number - 1)
-  items:     [],              // (array of objects - [])
-  skills:    [confuse, steal],// (array of objects - [])
-  attack:    0,               // (number - 10)
-  speed:     0,               // (number - 2000)
-  hp:        0,               // (number - 100)
-  gold:      0,               // (number - 0 to start. Can get gold by selling items to the tradesman)
-  exp:       0,               // (number - 0 to start. Experience points, increase when slaying monsters)
-  type:     'player',         // (string - 'player')
-  position: {row:0,column:0}, //(object - can be left out and set when needed)
-  levelUp:  0,                // (a method to update the level and the different properties affected by a level change. Level up happens when exp >= [player level * 10])
-  
+  name:           '',  
+  level:          1,                // (number - 1)  
+  items:          [],               // (array of objects - [])
+  skills:         [confuse, steal], // (array of objects - [])
+  attack:         10,               // (number - 10)
+  speed:          3000,             // (number - 2000)
+  hp:             100,              // (number - 100)
+  gold:           0,                // (number - 0 to start. Can get gold by selling items to the tradesman)
+  exp:            0,                // (number - 0 to start. Experience points, increase when slaying monsters)
+  type:           'player',         // (string - 'player')
+  position:       {row:0,column:0}, //(object - can be left out and set when needed)
+  getMaxHp:       ()=>{},           //(function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
+  levelUp:        ()=>{},           //(function - a method to update the level and the different properties affected by a level change. Level up happens when exp >= [player level * 20])
+  getExpToLevel:  ()=>{},           //(function - a method returning exp required to level. Value is level \* 20, e.g. level 2 -> 40exp required)
+  setItems:       function (items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
   //When leveling up, exp must be decreased by the amount used to level up, e.g. exp required to level up = 100. current exp = 120  
   //-> levelUp is called, incrementing by 1 the level and updating exp to exp = 120 - 100 = 20
 }; // The player object
@@ -130,7 +132,9 @@ function assertEqual(original, cloned) {
 
 // Clones an array of objects
 // returns a new array of cloned objects. Useful to clone an array of item objects
-function cloneArray(objs) {}
+function cloneArray(objs) {
+  return objs.map(elem => clone(elem));
+}
 
 // Uses a player item (note: this consumes the item, need to remove it after use)
 // itemName is a string, target is an entity (i.e. monster, tradesman, player, dungeon)
@@ -218,9 +222,7 @@ function printBoard() {
 function createPlayer(name, level, items) {//name, level = 1, items = []) {
   if(typeof name  === 'string') player.name = name;
   if(typeof level === 'number') player.level = level;
-  if(typeof items === 'object'){
-    if(items.legth >= 0) player.items = items;
-  } 
+  player.setItems(items);
 
   print('Create player with name ' + player.name + ' and level ' + player.level);
   return player;
@@ -236,14 +238,15 @@ function createMonster(level, items, position) {
     hp        : 0,          //(number - max is level \* 100)
     attack    : 0,          //(number - level \* 10)
     speed     : 0,          //(number - 6000 / level)
-    items     : items,      //(array of objects - may be empty or not depending on parameters)
+    items     : [],         //(array of objects - may be empty or not depending on parameters)
     position  : position,   //(object - specified in parameters)
     type      : 'monster',  //(string - 'monster')
     //Monsters give exp (experience points) when defeated following this rule: level \* 10; e.g. level is 2 -> 2 \* 10 = 20 exp points
+    setItems  : function (items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
   }
 
   monster.name = getMonsterRandomName();
-  
+  monster.setItems(items);
   print("Creating monster: " + monster.name, 'red');
 
   return monster;
@@ -251,48 +254,52 @@ function createMonster(level, items, position) {
 
 // 
 function getMonsterRandomName() {
-  var num = Math.floor(Math.random() * monsterNames.length + 1);
+  var num = Math.floor((Math.random() * monsterNames.length-1) + 1);
   return monsterNames[num];
 }
 
 // Creates a tradesman object with the specified items and position. hp is Infinity
 function createTradesman(items, position) {
   let tradesman = {
-    name        :'',                // (string - can be anything)
-    hp          :0,                 // (number - Infinity)
-    items       :items,             // (array of objects - may be empty or not depending on parameters)
-    position    : position,         // (object - specified in parameters)
-    type        :'tradesman'        // (string - 'tradesman')
+    name        :'',                    // (string - can be anything)
+    hp          :0,                     // (number - Infinity)
+    items       :[],                    // (array of objects - may be empty or not depending on parameters)
+    position    : {row:0, columns:0},   // (object - specified in parameters)
+    type        :'tradesman',           // (string - 'tradesman')
+    setItems    : function (items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
   }
   print("Creating tradesman: " + tradesman.name, 'red');
+  tradesman.position = position;
+  tradesman.setItems(items);
   return tradesman;
 }
 
-let item ={
-  name: '',
-  type: '',
-  value: 0,  
-  rarity: 0,
-  use: function use(){},
-  position:{row:0, column:0},
-}
-
 function fillInItemsArray(){
-  let potion = { 
-    use: function use(){},//restores 25hp to the specified target
+  let potion = {
+    name:       'Common potion',//'Common potion' (if rarity 0)
+    type:       'potion',
+    value:      5,  
+    rarity:     0,//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp)  
+    use:        function use(){},//restores 25hp to the specified target
+    position:   {row:0, column:0},
   }
   let bomb= {
-    use: function use(){},//deals 50hp damage to the specified target
+    name:       'Common bomb',// (if rarity 0)   
+    type:       'bomb',  
+    value:       7, 
+    rarity:      0,//Bonus: Bomb with rarity 3 deals 90% damage of hp 
+    use:         function use(){},//deals 50hp damage to the specified target
+    position:    {row:0, column:0},
   }
+
   let key={
+    name: 'Epic key',
+    type: 'key',
+    value: 150,  
+    rarity: 3,
     use: function use(){},//Unlocks the door to a dungeon
-  }
-  
-  potion.__proto__      =   item;
-  potion.name           =   'Common potion';//'Common potion' (if rarity 0)
-  potion.type           =   'potion';
-  potion.value          =   5;
-  potion.rarity         =   0;//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp)  
+    position:{row:0, column:0},
+  }  
   
   let unusualPotion     =   createItem(potion,{row:0, columns:0});
   unusualPotion.name    =   "Unusual potion";
@@ -312,12 +319,6 @@ function fillInItemsArray(){
   }
   epicPotion.__x__      =  potion;
 
-  bomb.__proto__        = item;
-  bomb.name             = 'Common bomb';// (if rarity 0)
-  bomb.type             = 'bomb';
-  bomb.value            = 7;
-  bomb.rarity           = 0;//Bonus: Bomb with rarity 3 deals 90% damage of hp
-
   let unusualBomb       =   createItem(bomb,{row:0, columns:0});
   unusualBomb.name      =   "Unusual bomb";
   unusualBomb.value     =   12;
@@ -335,12 +336,6 @@ function fillInItemsArray(){
   }
   epicBomb.__x__        =  bomb;
   
-  key.__proto__         =   item;
-  key.name              =   'Epic key';
-  key.type              =   'key';
-  key.value             =   150;
-  key.rarity            =   3;
-
   items.push(potion);
   items.push(unusualPotion);
   items.push(rarePotion);
@@ -440,18 +435,19 @@ function run() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
-      createPlayer('HopperCat');//setName('HopperCat');
+      //createPlayer('HopperCat');
+      createPlayer('HopperCat',1,[items[0],items[2]]);//setName('HopperCat');
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
       printBoard();
-      updateBoard(createMonster(1,[],{row:1, column:5}));
-      updateBoard(createMonster(1,[],{row:1, column:6}));
-      updateBoard(createMonster(3,[],{row:1, column:2}));
+      updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:5}));
+      updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:6}));
+      updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //createItem(itemIdx, pos), 
-      updateBoard(createTradesman([], {row:4, column:4}));
+      updateBoard(createTradesman(items, {row:4, column:7}));
       updateBoard(createDungeon({row:2,column:7}));
 
       break;
