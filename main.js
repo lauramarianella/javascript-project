@@ -27,8 +27,8 @@ const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
 let gameStep = 0; // The current game step, value is index of the GAME_STEPS array.
 let board = []; // The board holds all the game entities. It is a 2D array.
 
-const grassChar = '.';
-const wallChar = '#';
+const grassChar   = '.';
+const wallChar    = '#';
 
 let skill = {
   name: '',// (string)
@@ -68,7 +68,8 @@ let player = {// The player object
   getMaxHp:       ()=>{},           //(function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
   levelUp:        ()=>{},           //(function - a method to update the level and the different properties affected by a level change. Level up happens when exp >= [player level * 20])
   getExpToLevel:  ()=>{},           //(function - a method returning exp required to level. Value is level \* 20, e.g. level 2 -> 40exp required)
-  setItems:       function (items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
+  setItems:       setItems,
+  getSymbol:      function(){return this.type.charAt(0).toUpperCase(); },
   //When leveling up, exp must be decreased by the amount used to level up, e.g. exp required to level up = 100. current exp = 120  
   //-> levelUp is called, incrementing by 1 the level and updating exp to exp = 120 - 100 = 20
 }; // The player object
@@ -76,13 +77,15 @@ let player = {// The player object
 const grass = {
   symbol:   grassChar,
   type:     'grass',
-  position: {row:0,column:0}  //(object)
+  position: {row:0,column:0},  //(object)
+  getSymbol: function(){ return this.symbol},
 }
 
 const wall = {
   symbol:   wallChar,
   type:     'wall',
-  position: {row:0,column:0}  //(object)
+  position: {row:0,column:0},  //(object)
+  getSymbol: function(){ return this.symbol},
 }
 
 // Utility function to print messages with different colors. Usage: print('hello', 'red');
@@ -158,9 +161,13 @@ function createBoard(rows, columns) {
     board[i] = [];
     for(let j=0; j< columns; j++){      
       if( i===0 || i===rows-1 || j===0 || j===columns-1 ) {
-        board[i][j] = wallChar;//'#'
+        let newWall = clone(wall);
+        newWall.position = {row:i, columns:j};
+        board[i][j] = [newWall];//wallChar;//'#'
       }else{
-        board[i][j] = grassChar;//'.'
+        let newGrass = clone(grass);
+        newGrass.position = {row:i, columns:j};
+        board[i][j] = [newGrass]//grassChar;//'.'
       }
     }
   }
@@ -171,8 +178,7 @@ function createBoard(rows, columns) {
 // An entity has a position property, each board cell is an object with an entity property holding a reference to the entity at that position
 // When a player is on a board cell, the board cell keeps the current entity property (e.g. monster entity at that position) and may need to have an additional property to know the player is there too.
 function updateBoard(entity) {
-  board[entity.position.row][entity.position.column] = entity.type.slice(0,1);
-  
+  if(entity.position !== undefined) board[entity.position.row][entity.position.column].push(entity);
   printBoard();
 }
 
@@ -181,17 +187,11 @@ function updateBoard(entity) {
 function placePlayer() {
   const x = Math.floor(board.length/2);
   const y = Math.floor(board[0].length/2);
-  board[x][y] = 'P';
+  board[x][y].push(player);//'P';
   //print('Placing player in position x: ' + x + " y:" + y);
 
   //printBoard();
 }
-
-// function setPosition(x,y) {
-//   this.position.row = x;
-//   this.position.column = y;
-//   console.log(this.name + ' position set to: x:' + x + " y:" + y);
-// }
 
 // Creates the board and places player
 function initBoard(rows, columns) {
@@ -208,7 +208,7 @@ function printBoard() {
   
   board.forEach(row => {
                         let rowsBoard = '';
-                        row.forEach(col => rowsBoard +=col);
+                        row.forEach(col => {  rowsBoard +=(col[col.length-1]).getSymbol()  });
                         xyBoard += rowsBoard + '\n';
                         });//for(let i=0; i< board.length; i++){let rowsBoard = ''for(let j=0; j< board[0].length; j++){rowsBoard += board[i][j]; }xyBoard += rowsBoard + '\n'}
 
@@ -242,11 +242,13 @@ function createMonster(level, items, position) {
     position  : position,   //(object - specified in parameters)
     type      : 'monster',  //(string - 'monster')
     //Monsters give exp (experience points) when defeated following this rule: level \* 10; e.g. level is 2 -> 2 \* 10 = 20 exp points
-    setItems  : function (items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
+    setItems  : setItems,
+    getSymbol : function(){ return this.type.charAt(0).toUpperCase(); },
   }
 
   monster.name = getMonsterRandomName();
   monster.setItems(items);
+  //if(monster.position !== undefined) board[monster.position.row][monster.position.column].push(monster);
   print("Creating monster: " + monster.name, 'red');
 
   return monster;
@@ -266,41 +268,66 @@ function createTradesman(items, position) {
     items       :[],                    // (array of objects - may be empty or not depending on parameters)
     position    : {row:0, columns:0},   // (object - specified in parameters)
     type        :'tradesman',           // (string - 'tradesman')
-    setItems    : function (items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
+    setItems    : setItems,
+    getSymbol   : function(){ return this.type.charAt(0).toUpperCase();},
   }
-  print("Creating tradesman: " + tradesman.name, 'red');
+  print("Creating tradesman", 'red');
   tradesman.position = position;
+  //if(tradesman.position !== undefined) board[tradesman.position.row][tradesman.position.column].push(tradesman);
   tradesman.setItems(items);
   return tradesman;
 }
 
+function setItems(items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
+
 function fillInItemsArray(){
+  // let item = {
+  //   symbol:     'I',
+  //   name:       'Item',
+  //   type:       '',  
+  //   value:       0, 
+  //   rarity:      0,
+  //   use:         function use(){},
+  //   position:    {row:0, column:0},
+  //   getSymbol :  function(){ return this.symbol; },
+  // };
+
   let potion = {
-    name:       'Common potion',//'Common potion' (if rarity 0)
-    type:       'potion',
-    value:      5,  
-    rarity:     0,//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp)  
-    use:        function use(){},//restores 25hp to the specified target
-    position:   {row:0, column:0},
+    name      :   'Common potion',//'Common potion' (if rarity 0)
+    type      :   'potion',
+    value     :   5,  
+    rarity    :   0,//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp)  
+    use       :   function use(){},//restores 25hp to the specified target
+    position  :   {row:0, column:0},
+    symbol    :   'I',
+    getSymbol :   function(){ return this.symbol; },
   }
+  //potion.__proto__ = item;
+
   let bomb= {
-    name:       'Common bomb',// (if rarity 0)   
-    type:       'bomb',  
-    value:       7, 
-    rarity:      0,//Bonus: Bomb with rarity 3 deals 90% damage of hp 
-    use:         function use(){},//deals 50hp damage to the specified target
-    position:    {row:0, column:0},
+    name      :   'Common bomb',// (if rarity 0)   
+    type      :   'bomb',  
+    value     :   7, 
+    rarity    :   0,//Bonus: Bomb with rarity 3 deals 90% damage of hp 
+    use       :   function use(){},//deals 50hp damage to the specified target
+    position  :   {row:0, column:0},
+    symbol    :   'I',
+    getSymbol :   function(){ return this.symbol; },
   }
+  // bomb.__proto__ = item;
 
   let key={
-    name: 'Epic key',
-    type: 'key',
-    value: 150,  
-    rarity: 3,
-    use: function use(){},//Unlocks the door to a dungeon
-    position:{row:0, column:0},
+    name      :   'Epic key',
+    type      :   'key',
+    value     :   150,  
+    rarity    :   3,
+    use       :   function use(){},//Unlocks the door to a dungeon
+    position  :   {row:0, column:0},
+    symbol    :   'I',
+    getSymbol :   function(){ return this.symbol; },
   }  
-  
+  //key.__proto__ = item;
+
   let unusualPotion     =   createItem(potion,{row:0, columns:0});
   unusualPotion.name    =   "Unusual potion";
   unusualPotion.value   =   10;
@@ -317,7 +344,7 @@ function fillInItemsArray(){
     name: "Epic potion",
     use: function use(){},//Potion with rarity 3 restores 100% hp (sets hp back to max hp)
   }
-  epicPotion.__x__      =  potion;
+  epicPotion.__proto__      =  potion;
 
   let unusualBomb       =   createItem(bomb,{row:0, columns:0});
   unusualBomb.name      =   "Unusual bomb";
@@ -334,7 +361,7 @@ function fillInItemsArray(){
     value:  100,
     use: function use(){},//Bomb with rarity 3 deals 90% damage of hp
   }
-  epicBomb.__x__        =  bomb;
+  epicBomb.__proto__    =  bomb;
   
   items.push(potion);
   items.push(unusualPotion);
@@ -365,8 +392,10 @@ function createDungeon(position, isLocked = true, hasPrincess = true, items = []
   let dungeon = {
     position    : position,      // (object - specified in parameters)
     type        : 'dungeon',     // (string - 'tradesman')
+    getSymbol   : function(){ return this.type.charAt(0).toUpperCase();},
   } 
-  print("Creating dungeon: " + dungeon.name, 'red');
+  //if(dungeon.position !== undefined) board[dungeon.position.row][dungeon.position.column].push(dungeon);
+  print("Creating dungeon", 'red');
   return dungeon;
 }
 
@@ -446,10 +475,10 @@ function run() {
       updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:5}));
       updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:6}));
       updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
-      //createItem(itemIdx, pos), 
+      updateBoard(createItem(items[0], {row:2, column:7})); 
       updateBoard(createTradesman(items, {row:4, column:7}));
-      updateBoard(createDungeon({row:2,column:7}));
-
+      updateBoard(createDungeon({row:1,column:7}));
+      printBoard();
       break;
     case 'GAME_START':
       startGame();
