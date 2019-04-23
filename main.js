@@ -55,21 +55,27 @@ steal.cooldown  = 25000;      //is 25000
 
 let player = {// The player object
   name:           '',  
-  level:          1,                // (number - 1)  
-  items:          [],               // (array of objects - [])
-  skills:         [confuse, steal], // (array of objects - [])
-  attack:         10,               // (number - 10)
-  speed:          3000,             // (number - 2000)
-  hp:             100,              // (number - 100)
-  gold:           0,                // (number - 0 to start. Can get gold by selling items to the tradesman)
-  exp:            0,                // (number - 0 to start. Experience points, increase when slaying monsters)
-  type:           'player',         // (string - 'player')
-  position:       {row:0,column:0}, //(object - can be left out and set when needed)
-  getMaxHp:       ()=>{},           //(function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
-  levelUp:        ()=>{},           //(function - a method to update the level and the different properties affected by a level change. Level up happens when exp >= [player level * 20])
-  getExpToLevel:  ()=>{},           //(function - a method returning exp required to level. Value is level \* 20, e.g. level 2 -> 40exp required)
+  level:          1,                        // (number - 1)  
+  items:          [],                       // (array of objects - [])
+  skills:         [confuse, steal],         // (array of objects - [])
+  attack:         10,                       // (number - 10)
+  speed:          3000,                     // (number - 2000)
+  hp:             100,                      // (number - 100)
+  gold:           0,                        // (number - 0 to start. Can get gold by selling items to the tradesman)
+  exp:            0,                        // (number - 0 to start. Experience points, increase when slaying monsters)
+  type:           'player',                 // (string - 'player')
+  position:       {row:0,column:0},         //(object - can be left out and set when needed)
+  getMaxHp:       ()=>{ return level*100;}, //(function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
+  levelUp:        ()=>{},                   //(function - a method to update the level and the different properties affected by a level change. Level up happens when exp >= [player level * 20])
+  getExpToLevel:  ()=>{},                   //(function - a method returning exp required to level. Value is level \* 20, e.g. level 2 -> 40exp required)
   setItems:       setItems,
   getSymbol:      function(){return this.type.charAt(0).toUpperCase(); },
+  setLevel:       function(level){
+                    this.level  = level;      //1
+                    this.hp     = level*100;  //100
+                    this.speed  = 3000/level; //3000
+                    this.attack = level*10;   //10
+                  }
   //When leveling up, exp must be decreased by the amount used to level up, e.g. exp required to level up = 100. current exp = 120  
   //-> levelUp is called, incrementing by 1 the level and updating exp to exp = 120 - 100 = 20
 }; // The player object
@@ -223,7 +229,9 @@ function printBoard() {
 // Prints a message showing player name and level (which will be 1 by default)
 function createPlayer(name, level, items) {//name, level = 1, items = []) {
   if(typeof name  === 'string') player.name = name;
-  if(typeof level === 'number') player.level = level;
+  if(typeof level === 'number'){ 
+    player.setLevel(level);
+  }
   player.setItems(items);
 
   print('Create player with name ' + player.name + ' and level ' + player.level);
@@ -237,20 +245,26 @@ function createMonster(level, items, position) {
   let monster = {
     name      : '',         //(string - random from list of monster names)
     level     : level,      //(number - specified in parameters)
-    hp        : 0,          //(number - max is level \* 100)
-    attack    : 0,          //(number - level \* 10)
-    speed     : 0,          //(number - 6000 / level)
+    hp        : 100,        //(number - max is level \* 100)
+    attack    : 10,         //(number - level \* 10)
+    speed     : 6000,       //(number - 6000 / level)??
     items     : [],         //(array of objects - may be empty or not depending on parameters)
     position  : position,   //(object - specified in parameters)
     type      : 'monster',  //(string - 'monster')
     //Monsters give exp (experience points) when defeated following this rule: level \* 10; e.g. level is 2 -> 2 \* 10 = 20 exp points
     setItems  : setItems,
     getSymbol : function(){ return this.type.charAt(0).toUpperCase(); },
+    setLevel  : function(level){
+                  this.level  = level;      //1
+                  this.hp     = level*100;  //100
+                  this.speed  = 6000/level; //6000
+                  this.attack = level*10;   //10
+                }
   }
 
   monster.name = getMonsterRandomName();
   monster.setItems(items);
-  //if(monster.position !== undefined) board[monster.position.row][monster.position.column].push(monster);
+  monster.setLevel(level);
   print("Creating monster: " + monster.name, 'red');
 
   return monster;
@@ -404,32 +418,124 @@ function createDungeon(position, isLocked = true, hasPrincess = true, items = []
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
 function move(direction) {//Up, Down, Left, Right
-  direction = direction.toLowerCase();
+  let toX         = player.position.row;
+  let toY         = player.position.column;
+  let movePlayer  = false;
+  let fromX       = player.position.row;
+  let fromY       = player.position.column;
+
+  let currentEntitiesArray;
+  let entity;
+
+  direction   = direction.toLowerCase();
   switch (direction) {
     case 'up':
-      let arrEntities = board[player.position.row][player.position.column];
-      arrEntities.pop();
-      board[player.position.row][player.position.column] = arrEntities;
-      player.position.row --;
-      updateBoard(player);//in new x,y
+      toX--;
+      currentEntitiesArray = board[toX][toY];
+      entity = currentEntitiesArray[currentEntitiesArray.length-1];
+      break;
     case 'down':
-      board[player.position.row][player.position.column] = (board[player.position.row][player.position.column]).pop();
-      player.position.row ++;
-      updateBoard(player);//in new x,y
+      toX++;
+      currentEntitiesArray = board[toX][toY];
+      entity = currentEntitiesArray[currentEntitiesArray.length-1];
+      break;
     case 'left':
-      board[player.position.row][player.position.column] = (board[player.position.row][player.position.column]).pop();
-      player.position.columns --;
-      updateBoard(player);//in new x,y      
+      toY--;
+      currentEntitiesArray = board[toX][toY];
+      entity = currentEntitiesArray[currentEntitiesArray.length-1];
+      break;
     case 'right':
-      board[player.position.row][player.position.column] = (board[player.position.row][player.position.column]).pop();
-      player.position.columns ++;
-      updateBoard(player);//in new x,y      
+      toY++;
+      currentEntitiesArray = board[toX][toY];
+      entity = currentEntitiesArray[currentEntitiesArray.length-1];
+      break;
     default:
       break;
   }
 
-  printBoard();
+  movePlayer = playGame(entity);
+  if(movePlayer){
+    if(entity.type !== 'grass') (board[toX][toY]).pop();//remove item, monster,...don't remove grass or wall
+    (board[fromX][fromY]).pop();//remove player
+    player.position.row     = toX;//change player's position
+    player.position.column  = toY;//change player's position
+    updateBoard(player);//add player to board in new x,y
+  }else{
+    if (entity.type === 'wall') print("Player can't cross the walls");
+  }
+  //printBoard();
 }
+
+function playGame(entity){
+  if(entity.length >= 0){//could be an array of items or one only item
+    player.setItems(player.items.concat(entity));
+    print('Found ' + entity.length + ' items! ');
+    return true;
+  }
+
+  switch(entity.type.toLowerCase()){    
+    case 'monster'://fight
+    print('Encountered a ' + entity.name);
+      fight(entity);
+      return false;
+    case 'tradesman'://buy or sell
+      return false;
+    case 'dungeon'://ehh
+      return false;
+    case 'wall'://don't move
+      return false;
+    case 'grass'://just move
+      return true;
+    case 'potion'://pick it up
+      player.setItems(player.items.concat(entity));
+      print('Found item! ' + entity.name);
+      return true;
+    case 'bomb'://pick it up
+      player.setItems(player.items.concat(entity));
+      print('Found item! ' + entity.name);
+      return true;
+    case 'key'://pick it up
+      player.setItems(player.items.concat(entity));
+      print('Found item! ' + entity.name);
+      return true;
+    default:
+      return false;
+  }
+}
+
+let idFightPlayerVsMonster;
+let idFightMonsterVsPlayer;
+function fight(monster){
+  function attackA(){ attack(player,monster);  }
+  function attackB(){ attack(monster,player);  }
+
+  idFightPlayerVsMonster = setInterval(attackA,player.speed);
+  idFightMonsterVsPlayer = setInterval(attackB,monster.speed);
+}
+
+function attack(attacker, receiver){
+  receiver.hp-= attacker.attack;
+  let color = 'green';
+  if(receiver.type === 'player') color = 'red';
+  print(receiver.name +' hit! -' + receiver.attack + 'hp', color);
+  print('Hp left: ' + receiver.hp, color);
+  if(receiver.hp <=0 ){
+    clearInterval(idFightPlayerVsMonster);
+    clearInterval(idFightMonsterVsPlayer);
+    print(receiver.name + ' defeated.', 'black');
+    if(receiver.type !== 'player'){
+      attacker.exp = player.exp + 10;
+      print('Congratulations!! You have received 10 exp points.', 'black');
+      attacker.setItems(attacker.items.concat(receiver.items));
+      print('You have received the following items:', 'black');
+      console.log(receiver.items);
+      console.log(attacker.items);
+      console.log('end');
+    }else{
+      //GAME OVER
+    }
+  } 
+};
 
 function setupPlayer() {
   printSectionTitle('SETUP PLAYER');
@@ -502,18 +608,36 @@ function run() {
       setupBoard();
       initBoard(7, 15);
       printBoard();
-      updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:5}));
-      updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:6}));
-      updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
-      updateBoard(createItem(items[0], {row:2, column:7})); 
-      updateBoard(createTradesman(items, {row:4, column:7}));
-      updateBoard(createDungeon({row:1,column:7}));
+      updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:8}));
+      //updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:6}));
+      //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
+      updateBoard(createItem(items[0], {row:3, column:8})); 
+      //updateBoard(createTradesman(items, {row:4, column:7}));
+      //updateBoard(createDungeon({row:1,column:7}));
       printBoard();
       next();
       break;
     case 'GAME_START':
-      startGame();
-      move('Up');
+      startGame();//(3,7)
+      // move('Up');//(2,7)
+      // move('left');//(2,6)
+      // move('down');//(3,6)
+      // move('right');//(3,7)
+
+      // move('Up');//(2,7)
+      // move('right');//(2,8)
+      // move('Up');//(1,8)
+      // move('Up');//(1,8)
+      // move('Up');//(1,8)
+
+      // move('right');//(1,9)
+      // move('right');//(1,10)
+      // move('right');//(1,11)
+      // move('right');//(1,12)
+      // move('right');//(1,13)
+      // move('right');//(1,14)      
+      move("right");
+      move("Up");
       break;
   }
 }

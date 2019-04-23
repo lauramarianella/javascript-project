@@ -218,7 +218,7 @@ Monsters have the following properties (parentheses has type and initial value)
 - position (object - specified in parameters)
 - type (string - 'monster')
 - getMaxHp (function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
-- getExp (function - returns exp received for defeating monster. Value is level \* 10 e.g. level 2 -> 20 exp points received)
+- getExp (function - returns exp received for defeating monster. Value is level \* 10 e.g. level 2 -> 20 exp points received)??
 
 ### Tradesman
 
