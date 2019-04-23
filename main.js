@@ -187,6 +187,8 @@ function updateBoard(entity) {
 function placePlayer() {
   const x = Math.floor(board.length/2);
   const y = Math.floor(board[0].length/2);
+  player.position.row = x;
+  player.position.column = y;
   board[x][y].push(player);//'P';
   //print('Placing player in position x: ' + x + " y:" + y);
 
@@ -401,7 +403,33 @@ function createDungeon(position, isLocked = true, hasPrincess = true, items = []
 
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
-function move(direction) {}
+function move(direction) {//Up, Down, Left, Right
+  direction = direction.toLowerCase();
+  switch (direction) {
+    case 'up':
+      let arrEntities = board[player.position.row][player.position.column];
+      arrEntities.pop();
+      board[player.position.row][player.position.column] = arrEntities;
+      player.position.row --;
+      updateBoard(player);//in new x,y
+    case 'down':
+      board[player.position.row][player.position.column] = (board[player.position.row][player.position.column]).pop();
+      player.position.row ++;
+      updateBoard(player);//in new x,y
+    case 'left':
+      board[player.position.row][player.position.column] = (board[player.position.row][player.position.column]).pop();
+      player.position.columns --;
+      updateBoard(player);//in new x,y      
+    case 'right':
+      board[player.position.row][player.position.column] = (board[player.position.row][player.position.column]).pop();
+      player.position.columns ++;
+      updateBoard(player);//in new x,y      
+    default:
+      break;
+  }
+
+  printBoard();
+}
 
 function setupPlayer() {
   printSectionTitle('SETUP PLAYER');
@@ -448,6 +476,8 @@ function runORI() {
     case 'GAME_START':
       startGame();
       break;
+    default:
+      break;
   }
 }
 
@@ -479,9 +509,11 @@ function run() {
       updateBoard(createTradesman(items, {row:4, column:7}));
       updateBoard(createDungeon({row:1,column:7}));
       printBoard();
+      next();
       break;
     case 'GAME_START':
       startGame();
+      move('Up');
       break;
   }
 }
