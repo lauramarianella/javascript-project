@@ -26,6 +26,7 @@ const items = []; // Array of item objects. These will be used to clone new item
 const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
 let gameStep = 0; // The current game step, value is index of the GAME_STEPS array.
 let board = []; // The board holds all the game entities. It is a 2D array.
+let globalCurrentEntity = {};// the last entity that the player found 
 
 const grassChar   = '.';
 const wallChar    = '#';
@@ -149,7 +150,30 @@ function cloneArray(objs) {
 // itemName is a string, target is an entity (i.e. monster, tradesman, player, dungeon)
 // If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
 // First item of matching type is used
-function useItem(itemName, target) {}
+function useItem(itemName, target) {
+  target = globalCurrentEntity;
+  //itemName = itemName.toLowerCase();
+  let item = undefined;//the item to use against the entity
+
+  item = popItem(itemName, player);
+  if(item !== undefined){
+    item.use(target);
+  }else{
+    print("Player doesn't have such item: '" + itemName + "'");
+  }
+}
+
+function popItem(itemName, entity){
+  let index = undefined;
+  entity.items.forEach( (item, i) => { if(item.name.toLowerCase() === itemName.toLowerCase()){ 
+                                          index = i;  
+                                        } });
+  if(index !== undefined){
+    return entity.items.splice(index,1)[0];//return item
+  }
+  return undefined;
+}
+
 
 // Uses a player skill (note: skill is not consumable, it's useable infinitely besides the cooldown wait time)
 // skillName is a string. target is an entity (typically monster).
@@ -337,7 +361,10 @@ function fillInItemsArray(){
     type      :   'key',
     value     :   150,  
     rarity    :   3,
-    use       :   function use(){},//Unlocks the door to a dungeon
+    use       :   function use(targetDungeon){//Unlocks the door to a dungeon
+                    print('Unlocking dungeon...');
+                    targetDungeon.unlock();                    
+                  },
     position  :   {row:0, column:0},
     symbol    :   'I',
     getSymbol :   function(){ return this.symbol; },
@@ -404,13 +431,44 @@ function createItem(item, position) {
 
 // Creates a dungeon entity at the specified position
 // The other parameters are optional. You can have unlocked dungeons with no princess for loot, or just empty ones that use up a key for nothing.
-function createDungeon(position, isLocked = true, hasPrincess = true, items = [], gold = 0) {
-  let dungeon = {
+function createDungeon(position, isLocked, hasPrincess, items, gold) {//position, isLocked = true, hasPrincess = true, items = [], gold = 0) {
+  let dungeon = {    
+    isLocked    : true,
+    hasPrincess : true,
+    items       : [],
+    gold        : 0,
     position    : position,      // (object - specified in parameters)
     type        : 'dungeon',     // (string - 'tradesman')
     getSymbol   : function(){ return this.type.charAt(0).toUpperCase();},
+    setItems    : setItems,
+    unlock      : function unlock(){ 
+                                      if(isLocked === false){
+                                        print('The dungeon was already unlocked!'); 
+                                      }else{
+                                        isLocked = false; 
+                                        print('The dungeon is unlocked!'); 
+                                      }
+
+                                      if(hasPrincess){
+                                        print('You have freed the princess! Congratulations!'); 
+                                        print('The adventurer ' + player.name + ' and the princess lived happily ever after...');
+                                      }else{//player receives items and gold                                        
+                                        player.gold = player.gold + this.gold;
+                                        player.setItems(player.items.concat(this.items));//
+                                        print('There is not a princess!'); 
+                                        print("You have received " + this.gold + " in gold and the Dungeon's items");                                         
+                                      }
+                                      printSectionTitle("GAME OVER", undefined, undefined, 'red');
+                                    },
   } 
   //if(dungeon.position !== undefined) board[dungeon.position.row][dungeon.position.column].push(dungeon);
+  dungeon.position = position;
+
+  if(typeof isLocked    === 'boolean') dungeon.isLocked = isLocked;
+  if(typeof hasPrincess === 'boolean') dungeon.hasPrincess = hasPrincess,
+  dungeon.setItems(items);
+  if(typeof gold === 'number') dungeon.gold = gold;
+
   print("Creating dungeon", 'red');
   return dungeon;
 }
@@ -481,6 +539,11 @@ function playGame(entity){
     case 'tradesman'://buy or sell
       return false;
     case 'dungeon'://ehh
+      globalCurrentEntity = entity;//I lost the reference of this entity
+
+      print('Found dungeon!');
+      print("You need the key to open it. If you have the key, try useItem('Key') to unlock the door.");
+      print("Rumours are some monsters have keys to dungeons. The tradesman might also have spare keys to sell but they don't come cheap");
       return false;
     case 'wall'://don't move
       return false;
@@ -530,9 +593,8 @@ function attack(attacker, receiver){
       print('You have received the following items:', 'black');
       console.log(receiver.items);
       console.log(attacker.items);
-      console.log('end');
     }else{
-      //GAME OVER
+      printSectionTitle('GAME OVER',undefined, undefined, 'red');
     }
   } 
 };
@@ -571,7 +633,7 @@ function next() {
   run();
 }
 
-function runORI() {
+function run() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -596,24 +658,25 @@ fillInItemsArray();
 run();
 
 
-function run() {
+function runDebug() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
       //createPlayer('HopperCat');
-      createPlayer('HopperCat',1,[items[0],items[2]]);//setName('HopperCat');
+      createPlayer('HopperCat',1,[items[0],items[2], items[8]]);//setName('HopperCat');
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
       printBoard();
-      updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:8}));
+      //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:7}));
       //updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
-      updateBoard(createItem(items[0], {row:3, column:8})); 
+      //updateBoard(createItem(items[0], {row:3, column:8})); 
       //updateBoard(createTradesman(items, {row:4, column:7}));
-      //updateBoard(createDungeon({row:1,column:7}));
+      //updateBoard(createDungeon({row:2,column:7}));
+      updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
       printBoard();
       next();
       break;
@@ -635,9 +698,11 @@ function run() {
       // move('right');//(1,11)
       // move('right');//(1,12)
       // move('right');//(1,13)
-      // move('right');//(1,14)      
-      move("right");
+      // move('right');//(1,14)
+
       move("Up");
+      useItem('Epic key');//put it when there is a Dungeon
+
       break;
   }
 }
