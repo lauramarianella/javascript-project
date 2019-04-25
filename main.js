@@ -21,38 +21,24 @@ const monsterNames = [
   'Werewolf',
 ];
 
-const RARITY_LIST = ['Common', 'Unusual', 'Rare', 'Epic'];
-const items = []; // Array of item objects. These will be used to clone new items with the appropriate properties.
-const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
-let gameStep = 0; // The current game step, value is index of the GAME_STEPS array.
-let board = []; // The board holds all the game entities. It is a 2D array.
-let globalCurrentEntity = {};// the last entity that the player found 
+const RARITY_LIST       = ['Common', 'Unusual', 'Rare', 'Epic'];
+const items             = []; // Array of item objects. These will be used to clone new items with the appropriate properties.
+const GAME_STEPS        = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
+let gameStep            = 0; // The current game step, value is index of the GAME_STEPS array.
+let board               = []; // The board holds all the game entities. It is a 2D array.
 
-const grassChar   = '.';
-const wallChar    = '#';
-
-let skill = {
-  name: '',// (string)
-  requiredLevel: 0,// (number - the skill should not be useable if player level is lower)
-  cooldown:0,// (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
-  use: function use(){},// (function - takes a target / entity as a parameter and uses the skill on it)
-}
 let confuse = {
-  use: function use(){},//- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
+  name          : 'confuse',        // (string)
+  requiredLevel : 1,                // (number - the skill should not be useable if player level is lower)
+  cooldown      :10000,             // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
+  use           : function use(){}, //- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
 };
 let steal   = {
-  use: function use(){},//- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
+  name          : 'steal',          // (string)
+  requiredLevel : 3,                // (number - the skill should not be useable if player level is lower)
+  cooldown      :25000,             // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)  
+  use: function use(){},            //- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
 };
-confuse.__x__ = skill;
-steal.__x__   = skill;
-
-confuse.name     = 'confuse';
-confuse.required = 1;         // level is 1
-confuse.cooldown = 1000;      //is 10000
-
-steal.name      = 'steal';
-steal.required  = 3;          // level is 3
-steal.cooldown  = 25000;      //is 25000
 
 let player = {// The player object
   name:           '',  
@@ -66,9 +52,19 @@ let player = {// The player object
   exp:            0,                        // (number - 0 to start. Experience points, increase when slaying monsters)
   type:           'player',                 // (string - 'player')
   position:       {row:0,column:0},         //(object - can be left out and set when needed)
-  getMaxHp:       ()=>{ return level*100;}, //(function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
-  levelUp:        ()=>{},                   //(function - a method to update the level and the different properties affected by a level change. Level up happens when exp >= [player level * 20])
-  getExpToLevel:  ()=>{},                   //(function - a method returning exp required to level. Value is level \* 20, e.g. level 2 -> 40exp required)
+  getMaxHp:       function(){ return this.level*100; }, //(function - a method that returns max hp. Value is level \* 100, e.g. level 2 -> 200 max hp)
+  levelUp:        function() {              //(function - a method to update the level and the different properties affected by a level change. 
+                                            //Level up happens when exp >= [player level * 20])
+                                            //When leveling up, exp must be decreased by the amount used to level up, 
+                                            //e.g. exp required to level up = 100. current exp = 120  
+                                            //-> levelUp is called, incrementing by 1 the level and updating exp to exp = 120 - 100 = 20
+                                if(this.exp >= this.getExpToLevel()){
+                                  this.exp -= this.getExpToLevel();
+                                  this.setLevel(++this.level);
+                                }
+                              
+                              },                   
+  getExpToLevel:  function(){return this.level*20;},//(function - a method returning exp required to level. Value is level \* 20, e.g. level 2 -> 40exp required)
   setItems:       setItems,
   getSymbol:      function(){return this.type.charAt(0).toUpperCase(); },
   setLevel:       function(level){
@@ -77,19 +73,17 @@ let player = {// The player object
                     this.speed  = 3000/level; //3000
                     this.attack = level*10;   //10
                   }
-  //When leveling up, exp must be decreased by the amount used to level up, e.g. exp required to level up = 100. current exp = 120  
-  //-> levelUp is called, incrementing by 1 the level and updating exp to exp = 120 - 100 = 20
 }; // The player object
 
 const grass = {
-  symbol:   grassChar,
+  symbol:   '.',
   type:     'grass',
   position: {row:0,column:0},  //(object)
   getSymbol: function(){ return this.symbol},
 }
 
 const wall = {
-  symbol:   wallChar,
+  symbol:   '#',
   type:     'wall',
   position: {row:0,column:0},  //(object)
   getSymbol: function(){ return this.symbol},
@@ -151,10 +145,11 @@ function cloneArray(objs) {
 // If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
 // First item of matching type is used
 function useItem(itemName, target) {
-  target = globalCurrentEntity;
+  let arrayEntities = board[player.position.row][player.position.column];
+  target = arrayEntities[arrayEntities.length-2];
   //itemName = itemName.toLowerCase();
-  let item = undefined;//the item to use against the entity
 
+  let item = undefined;//the item to use against the entity
   item = popItem(itemName, player);
   if(item !== undefined){
     item.use(target);
@@ -193,11 +188,11 @@ function createBoard(rows, columns) {
       if( i===0 || i===rows-1 || j===0 || j===columns-1 ) {
         let newWall = clone(wall);
         newWall.position = {row:i, columns:j};
-        board[i][j] = [newWall];//wallChar;//'#'
+        board[i][j] = [newWall];//'#'
       }else{
         let newGrass = clone(grass);
         newGrass.position = {row:i, columns:j};
-        board[i][j] = [newGrass]//grassChar;//'.'
+        board[i][j] = [newGrass];//'.'
       }
     }
   }
@@ -232,6 +227,7 @@ function initBoard(rows, columns) {
   placePlayer();//place player in the middle
 
   print('Creating board and placing player...');
+  printBoard();
 }
 
 // Prints the board
@@ -268,7 +264,7 @@ function createPlayer(name, level, items) {//name, level = 1, items = []) {
 function createMonster(level, items, position) {
   let monster = {
     name      : '',         //(string - random from list of monster names)
-    level     : level,      //(number - specified in parameters)
+    level     : 1,          //(number - specified in parameters)
     hp        : 100,        //(number - max is level \* 100)
     attack    : 10,         //(number - level \* 10)
     speed     : 6000,       //(number - 6000 / level)??
@@ -277,18 +273,20 @@ function createMonster(level, items, position) {
     type      : 'monster',  //(string - 'monster')
     //Monsters give exp (experience points) when defeated following this rule: level \* 10; e.g. level is 2 -> 2 \* 10 = 20 exp points
     setItems  : setItems,
-    getSymbol : function(){ return this.type.charAt(0).toUpperCase(); },
+    getSymbol : function(){ return this.type.charAt(0).toUpperCase(); },//return M for show it in the board
     setLevel  : function(level){
                   this.level  = level;      //1
                   this.hp     = level*100;  //100
                   this.speed  = 6000/level; //6000
                   this.attack = level*10;   //10
-                }
+                },
+    getMaxHp  : function(){ return this.level * 100; },
+    getExp    : function(){ return this.level * 10;  },
   }
 
   monster.name = getMonsterRandomName();
   monster.setItems(items);
-  monster.setLevel(level);
+  if(level > 0) monster.setLevel(level);
   print("Creating monster: " + monster.name, 'red');
 
   return monster;
@@ -511,16 +509,18 @@ function move(direction) {//Up, Down, Left, Right
       break;
   }
 
-  movePlayer = playGame(entity);
-  if(movePlayer){
-    if(entity.type !== 'grass') (board[toX][toY]).pop();//remove item, monster,...don't remove grass or wall
-    (board[fromX][fromY]).pop();//remove player
-    player.position.row     = toX;//change player's position
-    player.position.column  = toY;//change player's position
-    updateBoard(player);//add player to board in new x,y
-  }else{
-    if (entity.type === 'wall') print("Player can't cross the walls");
+  if (entity.type === 'wall') {
+    print("Player can't cross the walls");
+    return;
   }
+
+
+  (board[fromX][fromY]).pop();//remove player from former position
+
+  player.position.row     = toX;//change player's position
+  player.position.column  = toY;//change player's position
+  updateBoard(player);          //add player to board in new x,y
+  playGame(entity);
   //printBoard();
 }
 
@@ -533,7 +533,7 @@ function playGame(entity){
 
   switch(entity.type.toLowerCase()){    
     case 'monster'://fight
-    print('Encountered a ' + entity.name);
+      print('Encountered a ' + entity.name);
       fight(entity);
       return false;
     case 'tradesman'://buy or sell
@@ -569,11 +569,8 @@ function playGame(entity){
 let idFightPlayerVsMonster;
 let idFightMonsterVsPlayer;
 function fight(monster){
-  function attackA(){ attack(player,monster);  }
-  function attackB(){ attack(monster,player);  }
-
-  idFightPlayerVsMonster = setInterval(attackA,player.speed);
-  idFightMonsterVsPlayer = setInterval(attackB,monster.speed);
+  idFightPlayerVsMonster = setInterval(() => attack(player,monster),player.speed);
+  idFightMonsterVsPlayer = setInterval(() => attack(monster,player),monster.speed);
 }
 
 function attack(attacker, receiver){
@@ -582,22 +579,33 @@ function attack(attacker, receiver){
   if(receiver.type === 'player') color = 'red';
   print(receiver.name +' hit! -' + receiver.attack + 'hp', color);
   print('Hp left: ' + receiver.hp, color);
-  if(receiver.hp <=0 ){
+  if(receiver.hp <=0 ){//if one of the die
     clearInterval(idFightPlayerVsMonster);
     clearInterval(idFightMonsterVsPlayer);
-    print(receiver.name + ' defeated.', 'black');
+    print(receiver.name + ' defeated.', 'black');    
     if(receiver.type !== 'player'){
-      attacker.exp = player.exp + 10;
-      print('Congratulations!! You have received 10 exp points.', 'black');
+      let arrayEntities = board[attacker.position.row][attacker.position.column];
+      arrayEntities.splice(arrayEntities.length-2,1);//remove the monster
+
+      attacker.exp = attacker.exp + receiver.getExp();
+      print('Congratulations!! You have received '+ receiver.getExp() + ' exp points.', 'black');
       attacker.setItems(attacker.items.concat(receiver.items));
       print('You have received the following items:', 'black');
       console.log(receiver.items);
       console.log(attacker.items);
+
+      attacker.levelUp();
     }else{
+      let arrayEntities = board[attacker.position.row][attacker.position.column];
+      arrayEntities.splice(arrayEntities.length-1,1);//remove the player
       printSectionTitle('GAME OVER',undefined, undefined, 'red');
     }
-  } 
-};
+  }else if(!assertEqual(attacker.position,receiver.position)){//player moved to another cell
+    clearInterval(idFightPlayerVsMonster);
+    clearInterval(idFightMonsterVsPlayer);
+    print('Player run away...', 'red');
+  }
+}
 
 function setupPlayer() {
   printSectionTitle('SETUP PLAYER');
@@ -633,7 +641,7 @@ function next() {
   run();
 }
 
-function run() {
+function runO() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -658,7 +666,7 @@ fillInItemsArray();
 run();
 
 
-function runDebug() {
+function run() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -669,9 +677,8 @@ function runDebug() {
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
-      printBoard();
-      //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:7}));
-      //updateBoard(createMonster(1,[items[1], items[4]],{row:1, column:6}));
+      //updateBoard(createMonster(2,[items[1], items[4]],{row:2, column:7}));
+      //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
       //updateBoard(createTradesman(items, {row:4, column:7}));
@@ -701,8 +708,9 @@ function runDebug() {
       // move('right');//(1,14)
 
       move("Up");
-      useItem('Epic key');//put it when there is a Dungeon
-
+      //setTimeout(() => useItem('Epic key'),10000);//put it when there is a Dungeon
+      //to test to move when dying setTimeout(()=> move('down'), 10000);
+      //printBoard();
       break;
-  }
+  } 
 }
