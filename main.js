@@ -145,14 +145,21 @@ function cloneArray(objs) {
 // If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
 // First item of matching type is used
 function useItem(itemName, target) {
-  let arrayEntities = board[player.position.row][player.position.column];
-  target = arrayEntities[arrayEntities.length-2];
-  //itemName = itemName.toLowerCase();
+  if(target === undefined){
+    let arrayEntities = board[player.position.row][player.position.column];
+    target = arrayEntities[arrayEntities.length-2];
+  }
+  if(target.type === 'wall' || target.type === 'grass') return;
 
   let item = undefined;//the item to use against the entity
   item = popItem(itemName, player);
+
   if(item !== undefined){
-    item.use(target);
+    if(item.type === 'potion') {
+      item.use(player);
+    }else{
+      item.use(target);
+    }
   }else{
     print("Player doesn't have such item: '" + itemName + "'");
   }
@@ -371,7 +378,20 @@ function initializeItemsArray(){//use RARITY_LIST
     type      :   'potion',
     value     :   5,  
     rarity    :   0,//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp) 
-    use       :   function use(){},//restores 25hp to the specified target
+    use       :   function use(target){//restores 25hp to the specified target
+                    let maxHp = target.getMaxHp();
+                    switch(this.rarity){
+                      case 3://Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp) 
+                        target.hp = maxHp;
+                        print('Used potion! 100%hp (Total HP: ' + target.hp +')');
+                        break;
+                      default:
+                        target.hp += 25;
+                        if(target.hp>maxHp) target.hp = maxHp;
+                        print('Used potion! +25hp (Total HP: ' + target.hp +')');
+                        break;                      
+                    }
+                  },
     position  :   {row:0, column:0},
     symbol    :   'I',
     getSymbol :   function(){ return this.symbol; },
@@ -384,7 +404,20 @@ function initializeItemsArray(){//use RARITY_LIST
     type      :   'bomb',  
     value     :   7, 
     rarity    :   0,//Bonus: Bomb with rarity 3 deals 90% damage of hp 
-    use       :   function use(){},//deals 50hp damage to the specified target
+    use       :   function use(target){//deals 50hp damage to the specified target                   
+                    switch(this.rarity){                      
+                      case 3://bomb with rarity 3 deals 90% of hp
+                        target.hp = target.hp*10/100;
+                        if(target.hp<0) target.hp = 0;
+                        print('Used bomb! -90%hp (Total HP: ' + target.hp +')');
+                        break;
+                      default://case 0,1,2
+                        target.hp -= 25;
+                        if(target.hp<0) target.hp = 0;
+                        print('Used bomb! -25hp (Total HP: ' + target.hp +')');
+                        break;
+                    }
+                  },
     position  :   {row:0, column:0},
     symbol    :   'I',
     getSymbol :   function(){ return this.symbol; },
@@ -420,9 +453,8 @@ function initializeItemsArray(){//use RARITY_LIST
 
   let epicPotion        =   createItem(potion,{row:0, columns:0});  
   epicPotion.value      =  50;
-  epicPotion.rarity     = 3;    
-  epicPotion.setItemName();//name: "Epic potion";
-  epicPotion.use        = function use(){};//Potion with rarity 3 restores 100% hp (sets hp back to max hp)
+  epicPotion.rarity     =  3;    
+  epicPotion.setItemName();//name: "Epic potion";//Potion with rarity 3 restores 100% hp (sets hp back to max hp)
 
 
   let unusualBomb       =   createItem(bomb,{row:0, columns:0});
@@ -438,8 +470,7 @@ function initializeItemsArray(){//use RARITY_LIST
   let epicBomb = createItem(bomb,{row:0, columns:0});
   epicBomb.value =  100;
   epicBomb.rarity= 3,
-  epicBomb.setItemName();//"Epic bomb"
-  epicBomb.use = function use(){},//Bomb with rarity 3 deals 90% damage of hp
+  epicBomb.setItemName();//"Epic bomb"//Bomb with rarity 3 deals 90% damage of hp
   
   
   items.push(potion);
@@ -616,13 +647,16 @@ function fight(monster){
 
 function attack(attacker, receiver){
   receiver.hp-= attacker.attack;
+  if(receiver.hp < 0) receiver.hp = 0;
+
   let color = 'green';
   if(receiver.type === 'player') color = 'red';
-  print(receiver.name +' hit! -' + receiver.attack + 'hp', color);
+  print(receiver.name +' hit! -' + receiver.attack + 'hp', color);  
   print('Hp left: ' + receiver.hp, color);
   if(receiver.hp <=0 ){//if one of the die
     clearInterval(idFightPlayerVsMonster);
     clearInterval(idFightMonsterVsPlayer);
+    receiver.hp = 0; //I got -5 ...
     print(receiver.name + ' defeated.', 'black');    
     if(receiver.type !== 'player'){
       let arrayEntities = board[attacker.position.row][attacker.position.column];
@@ -732,18 +766,18 @@ function run() {
     case 'SETUP_PLAYER':
       setupPlayer();
       //createPlayer('HopperCat');
-      createPlayer('HopperCat',1,[items[0],items[2], items[8]]);//setName('HopperCat');
+      createPlayer('HopperCat',1,[items[7],items[2], items[8]]);//setName('HopperCat');
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
-      //updateBoard(createMonster(2,[items[1], items[4]],{row:2, column:7}));
+      updateBoard(createMonster(1,[items[0], items[4]],{row:2, column:7}));
       //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
       //updateBoard(createTradesman(items, {row:4, column:7}));
-      updateBoard(createDungeon({row:2,column:7}, false, false));
+      //updateBoard(createDungeon({row:2,column:7}, false, false));
       //updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
       printBoard();
       next();
@@ -777,6 +811,13 @@ function run() {
       //setTimeout(()=>(move('u')),10000);
       //setTimeout(() => sell(0),10000);
       //setTimeout(() => buy(0),10000);
+
+      //setTimeout(() => useItem('Common potion'),19000);
+      //setTimeout(() => useItem('Epic potion'),19000);
+
+      //setTimeout(() => useItem('Common bomb'),19000);
+      setTimeout(() => useItem('Epic bomb'),19000);
+
       break;
   } 
 }
