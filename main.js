@@ -349,6 +349,7 @@ function createTradesman(items, position) {
     items       :[],                    // (array of objects - may be empty or not depending on parameters)
     position    : {row:0, columns:0},   // (object - specified in parameters)
     type        :'tradesman',           // (string - 'tradesman')
+    getMaxHp    :()=> Infinity,
     setItems    : setItems,
     getSymbol   : function(){ return this.type.charAt(0).toUpperCase();},
   }
@@ -583,9 +584,7 @@ function playGame(entity){
       print('Found dungeon!');
       print("You need the key to open it. If you have the key, try useItem('Key') to unlock the door.");
       print("Rumours are some monsters have keys to dungeons. The tradesman might also have spare keys to sell but they don't come cheap");
-      if(!entity.isLocked && entity.hasPrincess){
-        printSectionTitle("GAME OVER", 'RED');
-      }
+      checkDungeon(entity);//could be unlocked, also couldn't be a princess 
       return false;
     case 'wall'://don't move
       return false;
@@ -649,6 +648,26 @@ function attack(attacker, receiver){
   }
 }
 
+function checkDungeon(dungeon){ 
+  if(dungeon.isLocked){
+    print("Dungeon is locked...",'black');
+    (dungeon.hasPrincess)?print(player.name + " needs a key to free the princess",'black'):print('There is not a princess!','black');
+  }else{
+    if(dungeon.hasPrincess){
+      print('You have freed the princess! Congratulations!'); 
+      print('The adventurer ' + player.name + ' and the princess lived happily ever after...');
+      printSectionTitle("GAME OVER", undefined, undefined, 'red');
+    }else{//player receives items and gold                                        
+      player.gold = player.gold + dungeon.gold;
+      player.setItems(player.items.concat(dungeon.items));//
+      print("Dungeon is unlocked",'black');
+      print('There is not a princess!'); 
+      print("You have received " + dungeon.gold + " in gold and the Dungeon's items");   
+      console.log(player.items);                                      
+    }
+  }
+}
+
 function setupPlayer() {
   printSectionTitle('SETUP PLAYER');
   print("Please create a player using the createPlayer function. Usage: createPlayer('Bob')");
@@ -683,7 +702,7 @@ function next() {
   run();
 }
 
-function run() {
+function runOri() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -708,7 +727,7 @@ initializeItemsArray();
 run();
 
 
-function runDebug() {
+function run() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -724,7 +743,7 @@ function runDebug() {
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
       //updateBoard(createTradesman(items, {row:4, column:7}));
-      updateBoard(createDungeon({row:2,column:7}, true, true));
+      updateBoard(createDungeon({row:2,column:7}, false, false));
       //updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
       printBoard();
       next();
@@ -755,6 +774,7 @@ function runDebug() {
       //printBoard();
 
       //move("D");
+      //setTimeout(()=>(move('u')),10000);
       //setTimeout(() => sell(0),10000);
       //setTimeout(() => buy(0),10000);
       break;
