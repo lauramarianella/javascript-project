@@ -28,16 +28,47 @@ let gameStep            = 0; // The current game step, value is index of the GAM
 let board               = []; // The board holds all the game entities. It is a 2D array.
 
 let confuse = {
-  name          : 'confuse',        // (string)
-  requiredLevel : 1,                // (number - the skill should not be useable if player level is lower)
-  cooldown      :10000,             // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
-  use           : function use(){}, //- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
+  name          : 'confuse',            // (string)
+  requiredLevel : 1,                    // (number - the skill should not be useable if player level is lower)
+  cooldown      :10000,                 // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
+  use           : function use(target){ //- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
+                    if(player.level < this.requiredLevel){//if(this.parent.parent.level < this.requiredLevel){
+                      print("The skill '" + this.name + "' can't be use in level " + player.level,'red');
+                      return;
+                    }
+                    //if(this.cooldown > 0){
+                      let reverseNameStr = target.name.split('').reverse().join('');
+                      print("Confusing " + target.name + "...", 'red');
+                      print("..." + reverseNameStr + ", target is confused and hurts itself in the process");
+                      target.hp-= 25;
+                      if(target.hp < 0) target.hp = 0;
+                      print(target.name +' hit! -25hp', 'green');  
+                      print('HP left:' + target.hp, 'green');  
+                      //let idIntervalCoolDown = setInterval(()=> cooldown = 0,10000);
+                    //}
+                  },
 };
+
 let steal   = {
-  name          : 'steal',          // (string)
-  requiredLevel : 3,                // (number - the skill should not be useable if player level is lower)
-  cooldown      :25000,             // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)  
-  use: function use(){},            //- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
+  name          : 'steal',              // (string)
+  requiredLevel : 3,                    // (number - the skill should not be useable if player level is lower)
+  cooldown      :25000,                 // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)  
+  use:          function use(target){   //- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
+                  if(player.level < this.requiredLevel){
+                    print("The skill '" + this.name + "' can't be use in level " + player.level,'red');
+                    return;
+                  }
+                  //if(this.cooldown > 0){
+                    target.items.forEach( (item, i)=> {
+                                                        if(item.rarity <= 1){
+                                                          player.setItems(player.items.concat(item));
+                                                          target.items.splice(i,1)[0];//return item
+                                                          print('Stoling item: ' + item.name);
+                                                        }
+                                                      });  
+                    //let idIntervalCoolDown = setInterval(()=> cooldown = 0,25000);
+                  //}
+                },
 };
 
 let player = {// The player object
@@ -72,7 +103,9 @@ let player = {// The player object
                     this.hp     = level*100;  //100
                     this.speed  = 3000/level; //3000
                     this.attack = level*10;   //10
-                  }
+                  },
+  getSkill:       getSkill,
+  getIndexSkill:  getIndexSkill,
 }; // The player object
 
 const grass = {
@@ -176,11 +209,47 @@ function popItem(itemName, entity){
   return undefined;
 }
 
+function getSkill(skillName){
+  let index = undefined;
+  this.skills.forEach( (item, i) => { if(item.name.toLowerCase() === skillName.toLowerCase()){ 
+                                          index = i;  
+                                        } });
+  if(index !== undefined){
+    return this.skills[index];//return skill
+  }
+  return undefined;
+}
+
+function getIndexSkill(skillName){
+  let index = undefined;
+  this.skills.forEach( (item, i) => { if(item.name.toLowerCase() === skillName.toLowerCase()){ 
+                                          index = i;  
+                                        } });
+  return index;
+}
+
 
 // Uses a player skill (note: skill is not consumable, it's useable infinitely besides the cooldown wait time)
 // skillName is a string. target is an entity (typically monster).
 // If target is not specified, skill shoud be used on the entity at the same position
-function useSkill(skillName, target) {}
+function useSkill(skillName, target) {
+  if(target === undefined){
+    let arrayEntities = board[player.position.row][player.position.column];
+    target = arrayEntities[arrayEntities.length-2];
+  }
+  if(target.type === 'wall' || target.type === 'grass') return;
+  skillName = skillName.toLowerCase();
+
+  let skill = player.getSkill(skillName);
+  if(skill === undefined) {
+    print("Player doesn't have the skill: '" + skillName + "'");
+    return;
+  }
+  skill.use(target);
+
+  // let indexSkill = player.getIndexSkill(skillName);
+  // player.skills[indexSkill].use(target);
+}
 
 
 // First item of matching type is used
@@ -665,8 +734,9 @@ function attack(attacker, receiver){
       attacker.exp = attacker.exp + receiver.getExp();
       print('Congratulations!! You have received '+ receiver.getExp() + ' exp points.', 'black');
       attacker.setItems(attacker.items.concat(receiver.items));
-      print('You have received the following items:', 'black');
-      console.log(receiver.items);
+      receiver.items = [];
+      //console.log(receiver.items);
+      print('You have received the following items:', 'black');      
       console.log(attacker.items);
 
       attacker.levelUp();
@@ -694,9 +764,9 @@ function checkDungeon(dungeon){
     }else{//player receives items and gold                                        
       player.gold = player.gold + dungeon.gold;
       player.setItems(player.items.concat(dungeon.items));//
-      print("Dungeon is unlocked",'black');
-      print('There is not a princess!'); 
-      print("You have received " + dungeon.gold + " in gold and the Dungeon's items");   
+      print("The dungeon is unlocked!",'black');
+      print('Unfortunately, there was no princess.'); 
+      print("As consolation, you found " + dungeon.items.length + " items and " + dungeon.gold + " gold.");   
       console.log(player.items);                                      
     }
   }
@@ -766,13 +836,13 @@ function run() {
     case 'SETUP_PLAYER':
       setupPlayer();
       //createPlayer('HopperCat');
-      createPlayer('HopperCat',1,[items[7],items[2], items[8]]);//setName('HopperCat');
+      createPlayer('HopperCat',3,[items[0]]);//setName('HopperCat');
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
-      updateBoard(createMonster(1,[items[0], items[4]],{row:2, column:7}));
+      updateBoard(createMonster(3,[items[1], items[2], items[5], items[6]],{row:2, column:7}));
       //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
@@ -816,7 +886,10 @@ function run() {
       //setTimeout(() => useItem('Epic potion'),19000);
 
       //setTimeout(() => useItem('Common bomb'),19000);
-      setTimeout(() => useItem('Epic bomb'),19000);
+      //setTimeout(() => useItem('Epic bomb'),19000);
+
+      //setTimeout(() => useSkill('Confuse'),19000);
+      setTimeout(() => useSkill('Steal'),10000);
 
       break;
   } 
