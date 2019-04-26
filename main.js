@@ -583,6 +583,9 @@ function playGame(entity){
       print('Found dungeon!');
       print("You need the key to open it. If you have the key, try useItem('Key') to unlock the door.");
       print("Rumours are some monsters have keys to dungeons. The tradesman might also have spare keys to sell but they don't come cheap");
+      if(!entity.isLocked && entity.hasPrincess){
+        printSectionTitle("GAME OVER", 'RED');
+      }
       return false;
     case 'wall'://don't move
       return false;
@@ -720,8 +723,8 @@ function runDebug() {
       //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
-      updateBoard(createTradesman(items, {row:4, column:7}));
-      //updateBoard(createDungeon({row:2,column:7}));
+      //updateBoard(createTradesman(items, {row:4, column:7}));
+      updateBoard(createDungeon({row:2,column:7}, true, true));
       //updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
       printBoard();
       next();
@@ -746,14 +749,14 @@ function runDebug() {
       // move('r');//(1,13)
       // move('r');//(1,14)
 
-      //move("U");
+      move("U");
       //setTimeout(() => useItem('Epic key'),10000);//put it when there is a Dungeon      
       //to test to move when dying setTimeout(()=> move('down'), 10000);
       //printBoard();
 
-      move("D");
-      setTimeout(() => sell(0),10000);
-      setTimeout(() => buy(0),10000);
+      //move("D");
+      //setTimeout(() => sell(0),10000);
+      //setTimeout(() => buy(0),10000);
       break;
   } 
 }
