@@ -175,6 +175,49 @@ function popItem(itemName, entity){
 // If target is not specified, skill shoud be used on the entity at the same position
 function useSkill(skillName, target) {}
 
+
+// First item of matching type is used
+//target is the Tradesman
+function buy(itemIdx, target) {
+  let arrayEntities = board[player.position.row][player.position.column];
+  target = arrayEntities[arrayEntities.length-2];
+  let item = target.items[itemIdx];//before buying it
+  
+  if(item !== undefined){
+    //item.use(target);//no bcz it's not using it...
+    if(player.gold>=item.value){//if enough gold
+      player.gold -= item.value;
+      item = target.items.splice(itemIdx,1)[0];//popItem(itemName, target);
+      player.setItems(player.items.concat(item));
+      print("Purchased " + item.name, 'red');
+      print("Gold: " + player.gold, 'red');
+    }else{ print("Not enough gold :( Required:" + item.value + " gold: " + player.gold, 'red');}
+  }else{
+    print(target.name + " doesn't have an item with id: '" + itemIdx + "'", 'red');
+  }
+}
+
+// First item of matching type is used
+//target is the Tradesman
+function sell(itemIdx, target) {
+  let arrayEntities = board[player.position.row][player.position.column];
+  target = arrayEntities[arrayEntities.length-2];
+  let item = player.items[itemIdx];//before buying it
+  
+  if(item !== undefined){
+    //item.use(target);//no bcz it's not using it...
+    //if(tradesman.gold >=item.value){//if enough gold
+      item = player.items.splice(itemIdx,1)[0];//popItem(itemName, target);
+      target.setItems(target.items.concat(item));
+      player.gold = item.value;
+      print('Sold ' + item.name, 'blue');
+      print('Gold: ' + player.gold, 'blue');
+    //}
+  }else{
+    print("Player " + player.name + " can sell an inexistent item with id: '" + itemIdx + "'", 'red');
+  }
+}
+
 // Sets the board variable to a 2D array of rows and columns
 // First and last rows are walls
 // First and last columns are walls
@@ -310,6 +353,7 @@ function createTradesman(items, position) {
     getSymbol   : function(){ return this.type.charAt(0).toUpperCase();},
   }
   print("Creating tradesman", 'red');
+  tradesman.name ='Mysterious trader';
   tradesman.position = position;
   //if(tradesman.position !== undefined) board[tradesman.position.row][tradesman.position.column].push(tradesman);
   tradesman.setItems(items);
@@ -318,32 +362,24 @@ function createTradesman(items, position) {
 
 function setItems(items){ if(typeof items === 'object'){if(items.length >=0) this.items = cloneArray(items);} }
 
-function fillInItemsArray(){
-  // let item = {
-  //   symbol:     'I',
-  //   name:       'Item',
-  //   type:       '',  
-  //   value:       0, 
-  //   rarity:      0,
-  //   use:         function use(){},
-  //   position:    {row:0, column:0},
-  //   getSymbol :  function(){ return this.symbol; },
-  // };
+function initializeItemsArray(){//use RARITY_LIST
+  setItemName = function(){ return this.name = RARITY_LIST[this.rarity] + ' ' + this.type };
 
-  let potion = {
-    name      :   'Common potion',//'Common potion' (if rarity 0)
+  let potion = {   
+    name      :   '',//'Common potion',//'Common potion' (if rarity 0) 
     type      :   'potion',
     value     :   5,  
-    rarity    :   0,//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp)  
+    rarity    :   0,//Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp) 
     use       :   function use(){},//restores 25hp to the specified target
     position  :   {row:0, column:0},
     symbol    :   'I',
     getSymbol :   function(){ return this.symbol; },
+    setItemName : setItemName,
   }
-  //potion.__proto__ = item;
-
+  potion.setItemName();
+  
   let bomb= {
-    name      :   'Common bomb',// (if rarity 0)   
+    name      :   '',//'Common bomb',// (if rarity 0) 
     type      :   'bomb',  
     value     :   7, 
     rarity    :   0,//Bonus: Bomb with rarity 3 deals 90% damage of hp 
@@ -351,11 +387,12 @@ function fillInItemsArray(){
     position  :   {row:0, column:0},
     symbol    :   'I',
     getSymbol :   function(){ return this.symbol; },
+    setItemName : setItemName,
   }
-  // bomb.__proto__ = item;
+  bomb.setItemName();
 
   let key={
-    name      :   'Epic key',
+    name      :   '',//'Epic key',
     type      :   'key',
     value     :   150,  
     rarity    :   3,
@@ -366,43 +403,43 @@ function fillInItemsArray(){
     position  :   {row:0, column:0},
     symbol    :   'I',
     getSymbol :   function(){ return this.symbol; },
-  }  
-  //key.__proto__ = item;
+    setItemName : setItemName,
+  } 
+  key.setItemName();
 
   let unusualPotion     =   createItem(potion,{row:0, columns:0});
-  unusualPotion.name    =   "Unusual potion";
   unusualPotion.value   =   10;
   unusualPotion.rarity  =   1;
+  unusualPotion.setItemName();//unusualPotion.name    =   "Unusual potion";
 
-  let rarePotion        =   createItem(potion,{row:0, columns:0});
-  rarePotion.name       =   "Rare potion";
+  let rarePotion        =   createItem(potion,{row:0, columns:0});  
   rarePotion.value      =   20;
   rarePotion.rarity     =   2;
+  rarePotion.setItemName();//rarePotion.name       =   "Rare potion";
 
-  let epicPotion = { 
-    rarity: 3,
-    value:  50,
-    name: "Epic potion",
-    use: function use(){},//Potion with rarity 3 restores 100% hp (sets hp back to max hp)
-  }
-  epicPotion.__proto__      =  potion;
+  let epicPotion        =   createItem(potion,{row:0, columns:0});  
+  epicPotion.value      =  50;
+  epicPotion.rarity     = 3;    
+  epicPotion.setItemName();//name: "Epic potion";
+  epicPotion.use        = function use(){};//Potion with rarity 3 restores 100% hp (sets hp back to max hp)
+
 
   let unusualBomb       =   createItem(bomb,{row:0, columns:0});
-  unusualBomb.name      =   "Unusual bomb";
   unusualBomb.value     =   12;
   unusualBomb.rarity    =   1;
+  unusualBomb.setItemName();//unusualBomb.name      =   "Unusual bomb";
 
-  let rareBomb          =   createItem(bomb,{row:0, columns:0});
-  rareBomb.name         =   "Rare bomb";
+  let rareBomb          =   createItem(bomb,{row:0, columns:0});  
   rareBomb.value        =   25;
   rareBomb.rarity       =   2;
+  rareBomb.setItemName();//rareBomb.name         =   "Rare bomb";
 
-  let epicBomb = { 
-    rarity: 3,
-    value:  100,
-    use: function use(){},//Bomb with rarity 3 deals 90% damage of hp
-  }
-  epicBomb.__proto__    =  bomb;
+  let epicBomb = createItem(bomb,{row:0, columns:0});
+  epicBomb.value =  100;
+  epicBomb.rarity= 3,
+  epicBomb.setItemName();//"Epic bomb"
+  epicBomb.use = function use(){},//Bomb with rarity 3 deals 90% damage of hp
+  
   
   items.push(potion);
   items.push(unusualPotion);
@@ -454,7 +491,8 @@ function createDungeon(position, isLocked, hasPrincess, items, gold) {//position
                                         player.gold = player.gold + this.gold;
                                         player.setItems(player.items.concat(this.items));//
                                         print('There is not a princess!'); 
-                                        print("You have received " + this.gold + " in gold and the Dungeon's items");                                         
+                                        print("You have received " + this.gold + " in gold and the Dungeon's items");   
+                                        console.log(player.items);                                      
                                       }
                                       printSectionTitle("GAME OVER", undefined, undefined, 'red');
                                     },
@@ -485,22 +523,22 @@ function move(direction) {//Up, Down, Left, Right
 
   direction   = direction.toLowerCase();
   switch (direction) {
-    case 'up':
+    case 'u'://'up':
       toX--;
       currentEntitiesArray = board[toX][toY];
       entity = currentEntitiesArray[currentEntitiesArray.length-1];
       break;
-    case 'down':
+    case 'd'://'down':
       toX++;
       currentEntitiesArray = board[toX][toY];
       entity = currentEntitiesArray[currentEntitiesArray.length-1];
       break;
-    case 'left':
+    case 'l'://'left':
       toY--;
       currentEntitiesArray = board[toX][toY];
       entity = currentEntitiesArray[currentEntitiesArray.length-1];
       break;
-    case 'right':
+    case 'r'://'right':
       toY++;
       currentEntitiesArray = board[toX][toY];
       entity = currentEntitiesArray[currentEntitiesArray.length-1];
@@ -537,10 +575,11 @@ function playGame(entity){
       fight(entity);
       return false;
     case 'tradesman'://buy or sell
+      print('Encountered ' + entity.name + '! You can buy(itemIdx) and sell(itemIdx) items $$$');
+      print("Items for sale:");
+      console.log(entity.items);      
       return false;
     case 'dungeon'://ehh
-      globalCurrentEntity = entity;//I lost the reference of this entity
-
       print('Found dungeon!');
       print("You need the key to open it. If you have the key, try useItem('Key') to unlock the door.");
       print("Rumours are some monsters have keys to dungeons. The tradesman might also have spare keys to sell but they don't come cheap");
@@ -641,7 +680,7 @@ function next() {
   run();
 }
 
-function runO() {
+function run() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -661,12 +700,12 @@ function runO() {
 print('Welcome to the game!', 'gold');
 print('Follow the instructions to setup your game and start playing');
 
-fillInItemsArray();
+initializeItemsArray();
 
 run();
 
 
-function run() {
+function runDebug() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -681,36 +720,40 @@ function run() {
       //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
-      //updateBoard(createTradesman(items, {row:4, column:7}));
+      updateBoard(createTradesman(items, {row:4, column:7}));
       //updateBoard(createDungeon({row:2,column:7}));
-      updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
+      //updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
       printBoard();
       next();
       break;
     case 'GAME_START':
       startGame();//(3,7)
-      // move('Up');//(2,7)
-      // move('left');//(2,6)
-      // move('down');//(3,6)
-      // move('right');//(3,7)
+      // move('U');//(2,7)
+      // move('l');//(2,6)
+      // move('d');//(3,6)
+      // move('r');//(3,7)
 
-      // move('Up');//(2,7)
-      // move('right');//(2,8)
-      // move('Up');//(1,8)
-      // move('Up');//(1,8)
-      // move('Up');//(1,8)
+      // move('U');//(2,7)
+      // move('r');//(2,8)
+      // move('U');//(1,8)
+      // move('U');//(1,8)
+      // move('U');//(1,8)
 
-      // move('right');//(1,9)
-      // move('right');//(1,10)
-      // move('right');//(1,11)
-      // move('right');//(1,12)
-      // move('right');//(1,13)
-      // move('right');//(1,14)
+      // move('r');//(1,9)
+      // move('r');//(1,10)
+      // move('r');//(1,11)
+      // move('r');//(1,12)
+      // move('r');//(1,13)
+      // move('r');//(1,14)
 
-      move("Up");
-      //setTimeout(() => useItem('Epic key'),10000);//put it when there is a Dungeon
+      //move("U");
+      //setTimeout(() => useItem('Epic key'),10000);//put it when there is a Dungeon      
       //to test to move when dying setTimeout(()=> move('down'), 10000);
       //printBoard();
+
+      move("D");
+      setTimeout(() => sell(0),10000);
+      setTimeout(() => buy(0),10000);
       break;
   } 
 }
