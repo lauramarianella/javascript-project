@@ -814,7 +814,7 @@ function next() {
   run();
 }
 
-function runOri() {
+function run() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
@@ -839,7 +839,7 @@ initializeItemsArray();
 run();
 
 
-function run() {
+function runDebug() {
   switch (GAME_STEPS[gameStep]) {
     case 'SETUP_PLAYER':
       setupPlayer();
