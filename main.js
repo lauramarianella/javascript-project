@@ -30,44 +30,52 @@ let board               = []; // The board holds all the game entities. It is a 
 let confuse = {
   name          : 'confuse',            // (string)
   requiredLevel : 1,                    // (number - the skill should not be useable if player level is lower)
-  cooldown      :10000,                 // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
+  cooldown      : 0,                    // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
   use           : function use(target){ //- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
                     if(player.level < this.requiredLevel){//if(this.parent.parent.level < this.requiredLevel){
                       print("The skill '" + this.name + "' can't be use in level " + player.level,'red');
                       return;
                     }
-                    //if(this.cooldown > 0){
+                    if(this.cooldown === 0){
                       let reverseNameStr = target.name.split('').reverse().join('');
                       print("Confusing " + target.name + "...", 'red');
                       print("..." + reverseNameStr + ", target is confused and hurts itself in the process");
                       target.hp-= 25;
                       if(target.hp < 0) target.hp = 0;
                       print(target.name +' hit! -25hp', 'green');  
-                      print('HP left:' + target.hp, 'green');  
-                      //let idIntervalCoolDown = setInterval(()=> cooldown = 0,10000);
-                    //}
+                      print('HP left:' + target.hp, 'green'); 
+                      this.cooldown = 10000;//##################
+
+                      let idIntervalCoolDown = setInterval(()=> (this.cooldown <=0)?clearInterval(idIntervalCoolDown):this.cooldown -= 100,100);
+                    }else{
+                      print('Skill in cooldown. ' + this.cooldown + 'ms remaining.');
+                    }
                   },
 };
 
 let steal   = {
   name          : 'steal',              // (string)
   requiredLevel : 3,                    // (number - the skill should not be useable if player level is lower)
-  cooldown      :25000,                 // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)  
+  cooldown      : 0,                 // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)  
   use:          function use(target){   //- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
                   if(player.level < this.requiredLevel){
                     print("The skill '" + this.name + "' can't be use in level " + player.level,'red');
                     return;
                   }
-                  //if(this.cooldown > 0){
+                  if(this.cooldown === 0){
                     target.items.forEach( (item, i)=> {
                                                         if(item.rarity <= 1){
                                                           player.setItems(player.items.concat(item));
                                                           target.items.splice(i,1)[0];//return item
                                                           print('Stoling item: ' + item.name);
                                                         }
-                                                      });  
-                    //let idIntervalCoolDown = setInterval(()=> cooldown = 0,25000);
-                  //}
+                                                      }); 
+                      this.cooldown = 25000;//##################
+                      
+                    let idIntervalCoolDown = setInterval(()=> (this.cooldown <=0)?clearInterval(idIntervalCoolDown):this.cooldown -= 100,100);
+                  }else{
+                    print('Skill in cooldown. ' + this.cooldown + 'ms remaining.');
+                  }
                 },
 };
 
@@ -836,13 +844,13 @@ function run() {
     case 'SETUP_PLAYER':
       setupPlayer();
       //createPlayer('HopperCat');
-      createPlayer('HopperCat',3,[items[0]]);//setName('HopperCat');
+      createPlayer('HopperCat',1,[items[0]]);//setName('HopperCat');
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
-      updateBoard(createMonster(3,[items[1], items[2], items[5], items[6]],{row:2, column:7}));
+      updateBoard(createMonster(1,[items[1], items[2], items[5], items[6]],{row:2, column:7}));
       //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
       //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
       //updateBoard(createItem(items[0], {row:3, column:8})); 
@@ -888,8 +896,23 @@ function run() {
       //setTimeout(() => useItem('Common bomb'),19000);
       //setTimeout(() => useItem('Epic bomb'),19000);
 
-      //setTimeout(() => useSkill('Confuse'),19000);
+      // setTimeout(() => useSkill('Confuse'),0);
+      // setTimeout(() => useSkill('Confuse'),5000);
+      // setTimeout(() => useSkill('Confuse'),8000);
+      // setTimeout(() => useSkill('Confuse'),9000);
+      // setTimeout(() => useSkill('Confuse'),10000);
+      // setTimeout(() => useSkill('Confuse'),11000);
+      // setTimeout(() => useSkill('Confuse'),15000);
+      // setTimeout(() => useSkill('Confuse'),20000);
+      
+      setTimeout(() => useSkill('Steal'),0);
+      setTimeout(() => useSkill('Steal'),5000);
+      setTimeout(() => useSkill('Steal'),8000);
+      setTimeout(() => useSkill('Steal'),9000);
       setTimeout(() => useSkill('Steal'),10000);
+      setTimeout(() => useSkill('Steal'),11000);
+      setTimeout(() => useSkill('Steal'),15000);
+      setTimeout(() => useSkill('Steal'),20000);
 
       break;
   } 
