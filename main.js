@@ -3,6 +3,22 @@ NOTE: You will need to add and modify code in this file to complete this project
 I have defined a few functions and variables to help guide you but that doesn't mean no other variables or functions are necessary.
 If you think you have a better / different way to do things, you are free to do so :)
 */
+const ERROR_COLOR           = 'magenta';
+const SUCCESS_COLOR         = 'purple';
+
+const GAMEOVER_COLOR        = 'red';
+const MONSTER_COLOR         = 'red';
+
+const TRADESMAN_COLOR       = 'green';
+const DUNGEON_COLOR         = 'lightblue';
+const ITEM_COLOR            = 'green';
+const skill_COLOR           = 'green';
+
+const PLAYER_ATTACK_COLOR   = 'red';
+const MONSTER_ATTACK_COLOR  = 'green';
+
+const DEFAULT_COLOR         = 'black';
+const BOARD_COLOR           = 'blue';
 
 const monsterNames = [
   'Bigfoot',
@@ -33,22 +49,22 @@ let confuse = {
   cooldown      : 0,                    // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)
   use           : function use(target){ //- use: expects a target as parameter and reverses the name of the target entity as well as dealing [player level \* 25] damage (e.g. level 1 -> deals 25hp)
                     if(player.level < this.requiredLevel){//if(this.parent.parent.level < this.requiredLevel){
-                      print("The skill '" + this.name + "' can't be use in level " + player.level,'red');
+                      print("The skill '" + this.name + "' can't be use in level " + player.level, skill_COLOR);
                       return;
                     }
                     if(this.cooldown === 0){
                       let reverseNameStr = target.name.split('').reverse().join('');
-                      print("Confusing " + target.name + "...", 'red');
-                      print("..." + reverseNameStr + ", target is confused and hurts itself in the process");
+                      print("Confusing " + target.name + "...", skill_COLOR);
+                      print("..." + reverseNameStr + ", target is confused and hurts itself in the process",skill_COLOR);
                       target.hp-= 25;
                       if(target.hp < 0) target.hp = 0;
-                      print(target.name +' hit! -25hp', 'green');  
-                      print('HP left:' + target.hp, 'green'); 
+                      print(target.name +' hit! -25hp', PLAYER_ATTACK_COLOR);  
+                      print('HP left:' + target.hp, PLAYER_ATTACK_COLOR); 
                       this.cooldown = 10000;//##################
 
                       let idIntervalCoolDown = setInterval(()=> (this.cooldown <=0)?clearInterval(idIntervalCoolDown):this.cooldown -= 100,100);
                     }else{
-                      print('Skill in cooldown. ' + this.cooldown + 'ms remaining.');
+                      print('Skill in cooldown. ' + this.cooldown + 'ms remaining.', skill_COLOR);
                     }
                   },
 };
@@ -59,7 +75,7 @@ let steal   = {
   cooldown      : 0,                 // (number - initial value is 0 meaning it's useable, over 0 means we have to wait. This gets updated to the cooldown value when skill is used and gradually decreases until it's back to 0)  
   use:          function use(target){   //- use: expects a target as parameter and steals all items of rarity 1 or lower (i.e. unusual or common). Stolen items should be added to the player and removed from the target entity.
                   if(player.level < this.requiredLevel){
-                    print("The skill '" + this.name + "' can't be use in level " + player.level,'red');
+                    print("The skill '" + this.name + "' can't be use in level " + player.level, skill_COLOR);
                     return;
                   }
                   if(this.cooldown === 0){
@@ -67,14 +83,14 @@ let steal   = {
                                                         if(item.rarity <= 1){
                                                           player.setItems(player.items.concat(item));
                                                           target.items.splice(i,1)[0];//return item
-                                                          print('Stoling item: ' + item.name);
+                                                          print('Stoling item: ' + item.name, skill_COLOR);
                                                         }
                                                       }); 
                       this.cooldown = 25000;//##################
                       
                     let idIntervalCoolDown = setInterval(()=> (this.cooldown <=0)?clearInterval(idIntervalCoolDown):this.cooldown -= 100,100);
                   }else{
-                    print('Skill in cooldown. ' + this.cooldown + 'ms remaining.');
+                    print('Skill in cooldown. ' + this.cooldown + 'ms remaining.',skill_COLOR);
                   }
                 },
 };
@@ -186,6 +202,14 @@ function cloneArray(objs) {
 // If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
 // First item of matching type is used
 function useItem(itemName, target) {
+  if(player.name === "") {
+    print("You can't use and item if there is not a player, you can start by creating one with 'createPlayer('Bob')'", ERROR_COLOR);
+    return;
+  }
+  if(board.length === 0) {
+    print("You can't use and item if there is not a board first, you can start by creating one with 'initBoard(rows, columns)'", ERROR_COLOR);
+    return;
+  }
   if(target === undefined){
     let arrayEntities = board[player.position.row][player.position.column];
     target = arrayEntities[arrayEntities.length-2];
@@ -202,7 +226,7 @@ function useItem(itemName, target) {
       item.use(target);
     }
   }else{
-    print("Player doesn't have such item: '" + itemName + "'");
+    print("Player doesn't have such item: '" + itemName + "'", ERROR_COLOR);
   }
 }
 
@@ -250,7 +274,7 @@ function useSkill(skillName, target) {
 
   let skill = player.getSkill(skillName);
   if(skill === undefined) {
-    print("Player doesn't have the skill: '" + skillName + "'");
+    print("Player doesn't have the skill: '" + skillName + "'", ERROR_COLOR);
     return;
   }
   skill.use(target);
@@ -273,11 +297,11 @@ function buy(itemIdx, target) {
       player.gold -= item.value;
       item = target.items.splice(itemIdx,1)[0];//popItem(itemName, target);
       player.setItems(player.items.concat(item));
-      print("Purchased " + item.name, 'red');
-      print("Gold: " + player.gold, 'red');
-    }else{ print("Not enough gold :( Required:" + item.value + " gold: " + player.gold, 'red');}
+      print("Purchased " + item.name, SUCCESS_COLOR);
+      print("Gold: " + player.gold, SUCCESS_COLOR);
+    }else{ print("Not enough gold :( Required:" + item.value + " gold: " + player.gold, ERROR_COLOR);}
   }else{
-    print(target.name + " doesn't have an item with id: '" + itemIdx + "'", 'red');
+    print(target.name + " doesn't have an item with id: '" + itemIdx + "'", ERROR_COLOR);
   }
 }
 
@@ -293,12 +317,12 @@ function sell(itemIdx, target) {
     //if(tradesman.gold >=item.value){//if enough gold
       item = player.items.splice(itemIdx,1)[0];//popItem(itemName, target);
       target.setItems(target.items.concat(item));
-      player.gold = item.value;
-      print('Sold ' + item.name, 'blue');
-      print('Gold: ' + player.gold, 'blue');
+      player.gold += item.value;
+      print('Sold ' + item.name, SUCCESS_COLOR);
+      print('Gold: ' + player.gold, SUCCESS_COLOR);
     //}
   }else{
-    print("Player " + player.name + " can sell an inexistent item with id: '" + itemIdx + "'", 'red');
+    print("Player " + player.name + " can sell an inexistent item with id: '" + itemIdx + "'", ERROR_COLOR);
   }
 }
 
@@ -349,16 +373,37 @@ function placePlayer() {
 
 // Creates the board and places player
 function initBoard(rows, columns) {
+  if(player.name === "") {
+    print("You can't initBoard if there is not a player, you can start by creating one with 'createPlayer('Bob')'", ERROR_COLOR);
+    return;
+  }
+  if(isNaN(rows) || isNaN(columns)){
+    print("Please set appropriate numbers for rows and columns", ERROR_COLOR);
+    return;
+  }
+  if(rows < 3) {
+    print("The number of rows must be at least 3", ERROR_COLOR);
+    return;
+  }
+  if(columns <3) {
+    print("The number of columns must be at least 3", ERROR_COLOR);
+    return;
+  }
+
   createBoard(rows,columns);
 
   placePlayer();//place player in the middle
 
-  print('Creating board and placing player...');
+  print('Creating board and placing player...',SUCCESS_COLOR);
   printBoard();
 }
 
 // Prints the board
 function printBoard() {
+  if(board.length === 0){
+    print("You haven't defined a board, please use 'initBoard(rows, columns)'", ERROR_COLOR);
+    return;
+  }
   let xyBoard = '';
   
   board.forEach(row => {
@@ -367,7 +412,7 @@ function printBoard() {
                         xyBoard += rowsBoard + '\n';
                         });//for(let i=0; i< board.length; i++){let rowsBoard = ''for(let j=0; j< board[0].length; j++){rowsBoard += board[i][j]; }xyBoard += rowsBoard + '\n'}
 
-  print(xyBoard,'blue');
+  print(xyBoard, BOARD_COLOR);
 }
 
 
@@ -381,7 +426,7 @@ function createPlayer(name, level, items) {//name, level = 1, items = []) {
   }
   player.setItems(items);
 
-  print('Create player with name ' + player.name + ' and level ' + player.level);
+  print('Create player with name ' + player.name + ' and level ' + player.level, SUCCESS_COLOR);
   return player;
 }
 
@@ -414,7 +459,7 @@ function createMonster(level, items, position) {
   monster.name = getMonsterRandomName();
   monster.setItems(items);
   if(level > 0) monster.setLevel(level);
-  print("Creating monster: " + monster.name, 'red');
+  print("Creating monster: " + monster.name, MONSTER_COLOR);
 
   return monster;
 }
@@ -437,7 +482,7 @@ function createTradesman(items, position) {
     setItems    : setItems,
     getSymbol   : function(){ return this.type.charAt(0).toUpperCase();},
   }
-  print("Creating tradesman", 'red');
+  print("Creating tradesman", TRADESMAN_COLOR);
   tradesman.name ='Mysterious trader';
   tradesman.position = position;
   //if(tradesman.position !== undefined) board[tradesman.position.row][tradesman.position.column].push(tradesman);
@@ -460,12 +505,12 @@ function initializeItemsArray(){//use RARITY_LIST
                     switch(this.rarity){
                       case 3://Bonus:Potion with rarity 3 restores 100% hp (sets hp back to max hp) 
                         target.hp = maxHp;
-                        print('Used potion! 100%hp (Total HP: ' + target.hp +')');
+                        print('Used potion! 100%hp (Total HP: ' + target.hp +')', SUCCESS_COLOR);
                         break;
                       default:
                         target.hp += 25;
                         if(target.hp>maxHp) target.hp = maxHp;
-                        print('Used potion! +25hp (Total HP: ' + target.hp +')');
+                        print('Used potion! +25hp (Total HP: ' + target.hp +')',SUCCESS_COLOR);
                         break;                      
                     }
                   },
@@ -486,12 +531,12 @@ function initializeItemsArray(){//use RARITY_LIST
                       case 3://bomb with rarity 3 deals 90% of hp
                         target.hp = target.hp*10/100;
                         if(target.hp<0) target.hp = 0;
-                        print('Used bomb! -90%hp (Total HP: ' + target.hp +')');
+                        print('Used bomb! -90%hp (Total HP: ' + target.hp +')',SUCCESS_COLOR);
                         break;
                       default://case 0,1,2
                         target.hp -= 25;
                         if(target.hp<0) target.hp = 0;
-                        print('Used bomb! -25hp (Total HP: ' + target.hp +')');
+                        print('Used bomb! -25hp (Total HP: ' + target.hp +')',SUCCESS_COLOR);
                         break;
                     }
                   },
@@ -508,7 +553,7 @@ function initializeItemsArray(){//use RARITY_LIST
     value     :   150,  
     rarity    :   3,
     use       :   function use(targetDungeon){//Unlocks the door to a dungeon
-                    print('Unlocking dungeon...');
+                    print('Unlocking dungeon...',DUNGEON_COLOR);
                     targetDungeon.unlock();                    
                   },
     position  :   {row:0, column:0},
@@ -587,23 +632,23 @@ function createDungeon(position, isLocked, hasPrincess, items, gold) {//position
     setItems    : setItems,
     unlock      : function unlock(){ 
                                       if(isLocked === false){
-                                        print('The dungeon was already unlocked!'); 
+                                        print('The dungeon was already unlocked!',DUNGEON_COLOR); 
                                       }else{
                                         isLocked = false; 
-                                        print('The dungeon is unlocked!'); 
+                                        print('The dungeon is unlocked!', DUNGEON_COLOR); 
                                       }
 
                                       if(hasPrincess){
-                                        print('You have freed the princess! Congratulations!'); 
-                                        print('The adventurer ' + player.name + ' and the princess lived happily ever after...');
+                                        print('You have freed the princess! Congratulations!',DUNGEON_COLOR); 
+                                        print('The adventurer ' + player.name + ' and the princess lived happily ever after...',DUNGEON_COLOR);
                                       }else{//player receives items and gold                                        
                                         player.gold = player.gold + this.gold;
                                         player.setItems(player.items.concat(this.items));//
-                                        print('There is not a princess!'); 
-                                        print("You have received " + this.gold + " in gold and the Dungeon's items");   
+                                        print('There is not a princess!',DUNGEON_COLOR); 
+                                        print("You have received " + this.gold + " in gold and the Dungeon's items",DUNGEON_COLOR);   
                                         console.log(player.items);                                      
                                       }
-                                      printSectionTitle("GAME OVER", undefined, undefined, 'red');
+                                      printSectionTitle("GAME OVER", undefined, undefined, GAMEOVER_COLOR);
                                     },
   } 
   //if(dungeon.position !== undefined) board[dungeon.position.row][dungeon.position.column].push(dungeon);
@@ -614,13 +659,21 @@ function createDungeon(position, isLocked, hasPrincess, items, gold) {//position
   dungeon.setItems(items);
   if(typeof gold === 'number') dungeon.gold = gold;
 
-  print("Creating dungeon", 'red');
+  print("Creating dungeon", DUNGEON_COLOR);
   return dungeon;
 }
 
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
 function move(direction) {//Up, Down, Left, Right
+  if(player.name===''){
+    print("You can't move a player if first you haven't created one, please use 'createPlayer('Bob')'", ERROR_COLOR);
+    return;
+  }
+  if(board.length===0){
+    print("You can't move a player if first you haven't defined a board, please use 'initBoard(rows, columns)'", ERROR_COLOR);
+    return;
+  }
   let toX         = player.position.row;
   let toY         = player.position.column;
   let movePlayer  = false;
@@ -657,7 +710,7 @@ function move(direction) {//Up, Down, Left, Right
   }
 
   if (entity.type === 'wall') {
-    print("Player can't cross the walls");
+    print("Player can't cross the walls", ERROR_COLOR);
     return;
   }
 
@@ -674,24 +727,25 @@ function move(direction) {//Up, Down, Left, Right
 function playGame(entity){
   if(entity.length >= 0){//could be an array of items or one only item
     player.setItems(player.items.concat(entity));
-    print('Found ' + entity.length + ' items! ');
+    print('Found ' + entity.length + ' items! ', SUCCESS_COLOR);
     return true;
   }
 
+  let arrayEntities = board[player.position.row][player.position.column];
   switch(entity.type.toLowerCase()){    
     case 'monster'://fight
-      print('Encountered a ' + entity.name);
+      print('Encountered a ' + entity.name, MONSTER_COLOR);
       fight(entity);
       return false;
     case 'tradesman'://buy or sell
-      print('Encountered ' + entity.name + '! You can buy(itemIdx) and sell(itemIdx) items $$$');
-      print("Items for sale:");
+      print('Encountered ' + entity.name + '! You can buy(itemIdx) and sell(itemIdx) items $$$', TRADESMAN_COLOR);
+      print("Items for sale:", TRADESMAN_COLOR);
       console.log(entity.items);      
       return false;
     case 'dungeon'://ehh
-      print('Found dungeon!');
-      print("You need the key to open it. If you have the key, try useItem('Key') to unlock the door.");
-      print("Rumours are some monsters have keys to dungeons. The tradesman might also have spare keys to sell but they don't come cheap");
+      print('Found dungeon!',DUNGEON_COLOR);
+      print("You need the key to open it. If you have the key, try useItem('Key') to unlock the door.",DUNGEON_COLOR);
+      print("Rumours are some monsters have keys to dungeons. The tradesman might also have spare keys to sell but they don't come cheap",DUNGEON_COLOR);
       checkDungeon(entity);//could be unlocked, also couldn't be a princess 
       return false;
     case 'wall'://don't move
@@ -700,15 +754,18 @@ function playGame(entity){
       return true;
     case 'potion'://pick it up
       player.setItems(player.items.concat(entity));
-      print('Found item! ' + entity.name);
+      print('Found item! ' + entity.name, ITEM_COLOR);      
+      arrayEntities.splice(arrayEntities.length-2,1);//remove item from former position
       return true;
     case 'bomb'://pick it up
       player.setItems(player.items.concat(entity));
-      print('Found item! ' + entity.name);
+      print('Found item! ' + entity.name,ITEM_COLOR);
+      arrayEntities.splice(arrayEntities.length-2,1);//remove item from former position
       return true;
     case 'key'://pick it up
       player.setItems(player.items.concat(entity));
-      print('Found item! ' + entity.name);
+      print('Found item! ' + entity.name, ITEM_COLOR);
+      arrayEntities.splice(arrayEntities.length-2,1);//remove item from former position
       return true;
     default:
       return false;
@@ -726,55 +783,55 @@ function attack(attacker, receiver){
   receiver.hp-= attacker.attack;
   if(receiver.hp < 0) receiver.hp = 0;
 
-  let color = 'green';
-  if(receiver.type === 'player') color = 'red';
+  let color = MONSTER_ATTACK_COLOR;//'green';
+  if(receiver.type === 'player') color = PLAYER_ATTACK_COLOR;//'red';
   print(receiver.name +' hit! -' + receiver.attack + 'hp', color);  
   print('Hp left: ' + receiver.hp, color);
   if(receiver.hp <=0 ){//if one of the die
     clearInterval(idFightPlayerVsMonster);
     clearInterval(idFightMonsterVsPlayer);
     receiver.hp = 0; //I got -5 ...
-    print(receiver.name + ' defeated.', 'black');    
+    print(receiver.name + ' defeated.', SUCCESS_COLOR);//'black');    
     if(receiver.type !== 'player'){
       let arrayEntities = board[attacker.position.row][attacker.position.column];
       arrayEntities.splice(arrayEntities.length-2,1);//remove the monster
 
       attacker.exp = attacker.exp + receiver.getExp();
-      print('Congratulations!! You have received '+ receiver.getExp() + ' exp points.', 'black');
+      print('Congratulations!! You have received '+ receiver.getExp() + ' exp points.', SUCCESS_COLOR);
       attacker.setItems(attacker.items.concat(receiver.items));
       receiver.items = [];
       //console.log(receiver.items);
-      print('You have received the following items:', 'black');      
+      print('You have received the following items:', SUCCESS_COLOR);      
       console.log(attacker.items);
 
       attacker.levelUp();
     }else{
       let arrayEntities = board[attacker.position.row][attacker.position.column];
       arrayEntities.splice(arrayEntities.length-1,1);//remove the player
-      printSectionTitle('GAME OVER',undefined, undefined, 'red');
+      printSectionTitle('GAME OVER',undefined, undefined, GAMEOVER_COLOR);
     }
   }else if(!assertEqual(attacker.position,receiver.position)){//player moved to another cell
     clearInterval(idFightPlayerVsMonster);
     clearInterval(idFightMonsterVsPlayer);
-    print('Player run away...', 'red');
+    print('Player run away...', MONSTER_ATTACK_COLOR);
   }
 }
 
 function checkDungeon(dungeon){ 
   if(dungeon.isLocked){
-    print("Dungeon is locked...",'black');
-    (dungeon.hasPrincess)?print(player.name + " needs a key to free the princess",'black'):print('There is not a princess!','black');
+    print("Dungeon is locked...", DUNGEON_COLOR);
+    (dungeon.hasPrincess)?print(player.name + " needs a key to free the princess",DUNGEON_COLOR):print('There is not a princess!',DUNGEON_COLOR);
   }else{
     if(dungeon.hasPrincess){
-      print('You have freed the princess! Congratulations!'); 
-      print('The adventurer ' + player.name + ' and the princess lived happily ever after...');
-      printSectionTitle("GAME OVER", undefined, undefined, 'red');
+      print('You have freed the princess! Congratulations!',DUNGEON_COLOR); 
+      print('The adventurer ' + player.name + ' and the princess lived happily ever after...',DUNGEON_COLOR);
+      printSectionTitle("GAME OVER", undefined, undefined, GAMEOVER_COLOR);
     }else{//player receives items and gold                                        
       player.gold = player.gold + dungeon.gold;
       player.setItems(player.items.concat(dungeon.items));//
-      print("The dungeon is unlocked!",'black');
-      print('Unfortunately, there was no princess.'); 
-      print("As consolation, you found " + dungeon.items.length + " items and " + dungeon.gold + " gold.");   
+      print("The dungeon is unlocked!",DUNGEON_COLOR);
+      print('Unfortunately, there was no princess.',DUNGEON_COLOR); 
+      print("As consolation, you found " + dungeon.items.length + " items and " + dungeon.gold + " gold.",DUNGEON_COLOR);   
       console.log(player.items);                                      
     }
   }
@@ -806,7 +863,7 @@ function startGame() {
 }
 
 function gameOver() {
-  printSectionTitle('GAME OVER');
+  printSectionTitle('GAME OVER', undefined,undefined, GAMEOVER_COLOR);
 }
 
 function next() {
@@ -844,20 +901,20 @@ function runDebug() {
     case 'SETUP_PLAYER':
       setupPlayer();
       //createPlayer('HopperCat');
-      createPlayer('HopperCat',1,[items[0]]);//setName('HopperCat');
+      createPlayer('HopperCat',1,[items[0]]);
       next();
       break;
     case 'SETUP_BOARD':
       setupBoard();
       initBoard(7, 15);
       updateBoard(createMonster(1,[items[1], items[2], items[5], items[6]],{row:2, column:7}));
-      //updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
-      //updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
-      //updateBoard(createItem(items[0], {row:3, column:8})); 
-      //updateBoard(createTradesman(items, {row:4, column:7}));
-      //updateBoard(createDungeon({row:2,column:7}, false, false));
+      updateBoard(createMonster(1,[items[1], items[4]],{row:2, column:6}));
+      updateBoard(createMonster(3,[items[1], items[4]],{row:1, column:2}));
+      updateBoard(createItem(items[0], {row:3, column:8})); 
+      updateBoard(createTradesman(items, {row:4, column:7}));
+      updateBoard(createDungeon({row:2,column:7}, false, false));
       //updateBoard(createDungeon({row:2,column:7},true,false, [items[1], items[4]], 50));
-      printBoard();
+      //printBoard();
       next();
       break;
     case 'GAME_START':
@@ -905,14 +962,14 @@ function runDebug() {
       // setTimeout(() => useSkill('Confuse'),15000);
       // setTimeout(() => useSkill('Confuse'),20000);
       
-      setTimeout(() => useSkill('Steal'),0);
-      setTimeout(() => useSkill('Steal'),5000);
-      setTimeout(() => useSkill('Steal'),8000);
-      setTimeout(() => useSkill('Steal'),9000);
-      setTimeout(() => useSkill('Steal'),10000);
-      setTimeout(() => useSkill('Steal'),11000);
-      setTimeout(() => useSkill('Steal'),15000);
-      setTimeout(() => useSkill('Steal'),20000);
+      // setTimeout(() => useSkill('Steal'),0);
+      // setTimeout(() => useSkill('Steal'),5000);
+      // setTimeout(() => useSkill('Steal'),8000);
+      // setTimeout(() => useSkill('Steal'),9000);
+      // setTimeout(() => useSkill('Steal'),10000);
+      // setTimeout(() => useSkill('Steal'),11000);
+      // setTimeout(() => useSkill('Steal'),15000);
+      // setTimeout(() => useSkill('Steal'),20000);
 
       break;
   } 
