@@ -937,7 +937,7 @@ function runDebug() {
       // move('r');//(1,13)
       // move('r');//(1,14)
 
-      move("U");
+      //move("U");
       //setTimeout(() => useItem('Epic key'),10000);//put it when there is a Dungeon      
       //to test to move when dying setTimeout(()=> move('down'), 10000);
       //printBoard();
@@ -945,6 +945,7 @@ function runDebug() {
       //move("D");
       //setTimeout(()=>(move('u')),10000);
       //setTimeout(() => sell(0),10000);
+      //setTimeout(() => buy(8),10000);
       //setTimeout(() => buy(0),10000);
 
       //setTimeout(() => useItem('Common potion'),19000);
